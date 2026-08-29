@@ -4,6 +4,8 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Wallet } from 'lucide-react'
+import { RiskBadge } from '@/components/risk/risk-badge'
+import { ScoreBar } from '@/components/score/score-gauge'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -46,9 +48,24 @@ export function CustomersTable({ customers }: { customers: CustomerSummary[] }) 
         ),
       },
       {
-        accessorKey: 'city',
-        header: 'City',
-        cell: ({ row }) => <span className="text-muted-foreground">{row.original.city}</span>,
+        accessorKey: 'score',
+        header: 'Score',
+        cell: ({ row }) =>
+          row.original.score === null ? (
+            <span className="text-muted-foreground">Not scored</span>
+          ) : (
+            <ScoreBar score={row.original.score} className="min-w-32" />
+          ),
+      },
+      {
+        id: 'band',
+        header: 'Risk band',
+        cell: ({ row }) =>
+          row.original.score === null ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <RiskBadge score={row.original.score} size="sm" />
+          ),
       },
       {
         accessorKey: 'avgMonthlyInflow',
@@ -144,12 +161,21 @@ export function CustomersTable({ customers }: { customers: CustomerSummary[] }) 
                 </p>
               </div>
             </div>
-            {!row.hasBankLoanHistory && (
-              <Badge tone="primary" size="sm" className="shrink-0">
-                Thin file
-              </Badge>
-            )}
+            <span className="shrink-0 text-right">
+              <span className="block text-lg font-semibold leading-none tabular-nums">
+                {row.score ?? '—'}
+              </span>
+              {!row.hasBankLoanHistory && (
+                <span className="mt-1 block text-[10px] font-medium text-primary">Thin file</span>
+              )}
+            </span>
           </div>
+
+          {row.score !== null && (
+            <div className="mt-3">
+              <RiskBadge score={row.score} size="sm" showVerdict />
+            </div>
+          )}
 
           <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3">
             <div>

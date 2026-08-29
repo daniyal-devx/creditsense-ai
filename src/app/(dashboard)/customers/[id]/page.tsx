@@ -28,6 +28,10 @@ import {
   getRecentTransactions,
   getTopupHistory,
 } from '@/lib/db/customers'
+import { fullFeaturesToModelInput, getCurrentScore } from '@/lib/db/scores'
+import { scoreCustomer } from '@/lib/scoring/score'
+import { ScorePanel } from '@/components/score/score-panel'
+import { RiskBadge } from '@/components/risk/risk-badge'
 import { readAllSignals, summariseProfile } from '@/lib/features/interpret'
 import {
   formatDate,
@@ -68,12 +72,20 @@ export default async function CustomerProfilePage({
   const customer = await getCustomer(id)
   if (!customer) notFound()
 
-  const [features, bills, transactions, topups] = await Promise.all([
+  const [features, bills, transactions, topups, storedScore] = await Promise.all([
     getCustomerFeatures(id),
     getBillHistory(id, 60),
     getRecentTransactions(id, 40),
     getTopupHistory(id, 12),
+    getCurrentScore(id),
   ])
+
+  // The scorecard is pure and fast, so the score is recomputed here from the
+  // stored features rather than trusting the cached number. The stored row is
+  // still the record of what was decided and when — this just guarantees the
+  // panel, the contributions and the arithmetic all come from one evaluation.
+  const scored = features ? scoreCustomer(fullFeaturesToModelInput(features)) : null
+  const modelFeatures = features ? fullFeaturesToModelInput(features) : null
 
   // The features cache may not have been built yet; the chart still works
   // straight from raw transactions rather than showing an empty panel.
@@ -100,17 +112,47 @@ export default async function CustomerProfilePage({
         }
         description={`${customer.occupation} · ${customer.city}, ${customer.province}`}
         badge={
-          customer.hasBankLoanHistory ? (
-            <Badge tone="neutral">Has bureau record</Badge>
-          ) : (
-            <Badge tone="primary" icon={<Info />}>
-              Thin file — no credit history
-            </Badge>
-          )
+          <span className="flex flex-wrap items-center gap-2">
+            {scored && <RiskBadge score={scored.score} showVerdict />}
+            {customer.hasBankLoanHistory ? (
+              <Badge tone="neutral">Has bureau record</Badge>
+            ) : (
+              <Badge tone="primary" icon={<Info />}>
+                Thin file — no credit history
+              </Badge>
+            )}
+          </span>
         }
       />
 
       <div className="flex flex-col gap-6">
+        {/* ---------- the score, first and largest ---------- */}
+        {scored && modelFeatures ? (
+          <Section
+            title="Can this person repay?"
+            description="The CreditSense Score, and every factor that produced it."
+          >
+            <ScorePanel
+              score={scored}
+              features={modelFeatures}
+              customerName={customer.fullName}
+              scoredAt={storedScore?.scoredAt}
+            />
+          </Section>
+        ) : (
+          <Alert tone="warning" title="Not scored yet">
+            This applicant has no engineered features, so no score could be produced. Run{' '}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+              npm run db:features
+            </code>{' '}
+            then{' '}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+              npm run db:score
+            </code>
+            .
+          </Alert>
+        )}
+
         {/* ---------- the one-sentence read ---------- */}
         {features ? (
           <Alert tone="info" icon={<Info />} title="What the signals say">
@@ -344,9 +386,9 @@ export default async function CustomerProfilePage({
         </div>
 
         <Alert tone="info" title="What comes next">
-          Phase 3 turns these signals into a 0–1000 CreditSense Score with plain-language reasons.
-          Phase 4 sizes a safe loan from the affordability figures above. Phase 5 checks the
-          identity and relationship signals for fraud.
+          Phase 4 sizes a safe loan amount from the affordability figures above. Phase 5 checks
+          the identity and relationship signals for fraud. Phase 6 keeps re-scoring after
+          disbursement and raises an alert when the behaviour deteriorates.
         </Alert>
       </div>
     </>

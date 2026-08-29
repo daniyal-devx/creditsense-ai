@@ -43,6 +43,9 @@ export interface CustomerSummary {
 
   pendingApplications: number
   activeLoans: number
+  /** Current CreditSense score, or null if not scored yet. */
+  score: number | null
+  scoreBand: string | null
 }
 
 export interface CustomerDetail extends CustomerSummary {
@@ -209,14 +212,16 @@ export async function listCustomers(
        f.bill_punctuality, f.wallet_tenure_months, f.transaction_count,
        f.activity_density, f.savings_rate, f.days_since_last_transaction,
        f.computed_at,
+       s.score, s.risk_band,
        (select count(*) from applications a
          where a.customer_id = c.id and a.status in ('pending','in_review'))::text as pending_applications,
        (select count(*) from loans l
          where l.customer_id = c.id and l.status in ('active','delinquent'))::text as active_loans
      from customers c
      left join customer_features f on f.customer_id = c.id
+     left join current_credit_scores s on s.customer_id = c.id
      ${where}
-     order by f.avg_monthly_inflow desc nulls last, c.full_name
+     order by s.score desc nulls last, c.full_name
      limit $${params.length - 1} offset $${params.length}`,
     params,
   )
@@ -253,6 +258,8 @@ function mapSummary(r: Record<string, unknown>): CustomerSummary {
     featuresComputedAt: (r.computed_at as Date | null) ?? null,
     pendingApplications: Number(r.pending_applications ?? 0),
     activeLoans: Number(r.active_loans ?? 0),
+    score: r.score === null || r.score === undefined ? null : Number(r.score),
+    scoreBand: (r.risk_band as string | null) ?? null,
   }
 }
 
@@ -264,12 +271,14 @@ export async function getCustomer(id: string): Promise<CustomerDetail | null> {
        f.bill_punctuality, f.wallet_tenure_months, f.transaction_count,
        f.activity_density, f.savings_rate, f.days_since_last_transaction,
        f.computed_at,
+       s.score, s.risk_band,
        (select count(*) from applications a
          where a.customer_id = c.id and a.status in ('pending','in_review'))::text as pending_applications,
        (select count(*) from loans l
          where l.customer_id = c.id and l.status in ('active','delinquent'))::text as active_loans
      from customers c
      left join customer_features f on f.customer_id = c.id
+     left join current_credit_scores s on s.customer_id = c.id
      where c.id = $1`,
     [id],
   )

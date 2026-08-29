@@ -17,7 +17,9 @@
     "db:reset": "tsx scripts/db/reset.ts",
     "db:diagnose": "tsx scripts/db/diagnose.ts",
     "db:seed-users": "tsx scripts/db/seed-users.ts",
-    "email:test": "tsx scripts/email-test.ts"
+    "email:test": "tsx scripts/email-test.ts",
+    "model:train": "tsx scripts/model/train.ts",
+    "db:score": "tsx scripts/db/build-scores.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

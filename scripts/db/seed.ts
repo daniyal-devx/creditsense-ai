@@ -59,8 +59,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const SEED = 'creditsense-2026'
-const REGULAR_CUSTOMERS = 62
-const FRAUD_RING_SIZE = 5
+const REGULAR_CUSTOMERS = 320
+const FRAUD_RING_SIZE = 6
 const MONTHS_OF_HISTORY = 14
 
 /**

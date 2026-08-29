@@ -39,13 +39,13 @@ export const PHASES: readonly Phase[] = [
     number: 3,
     title: 'CreditSense Score',
     answers: 'Q1 — Can this person repay? A 0–1000 score with plain-language reasons.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 4,
     title: 'Financial Affordability Engine',
     answers: 'Q2 — How much can they safely borrow?',
-    status: 'todo',
+    status: 'in-progress',
   },
   {
     number: 5,
