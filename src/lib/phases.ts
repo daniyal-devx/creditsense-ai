@@ -33,13 +33,13 @@ export const PHASES: readonly Phase[] = [
     number: 2,
     title: 'Auth, Email & Access Control',
     answers: 'Signup, email verification, Google sign-in, roles and permissions.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 3,
     title: 'CreditSense Score',
     answers: 'Q1 — Can this person repay? A 0–1000 score with plain-language reasons.',
-    status: 'todo',
+    status: 'in-progress',
   },
   {
     number: 4,
