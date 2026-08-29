@@ -63,13 +63,13 @@ export const PHASES: readonly Phase[] = [
     number: 7,
     title: 'Role Dashboards & Decision Workflow',
     answers: 'Turns the modules into an actual approve / reject decision.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 8,
     title: 'Demo Data, Polish & Deploy',
     answers: 'Makes the impact provable to judges and lenders.',
-    status: 'todo',
+    status: 'in-progress',
   },
 ]
 

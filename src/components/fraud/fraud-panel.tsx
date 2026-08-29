@@ -77,7 +77,6 @@ export function FraudPanel({
   /** The relationship graph, passed in by the page so this stays a server component. */
   children?: React.ReactNode
 }) {
-  const config = LEVEL_CONFIG[assessment.level]
   const firstName = customerName.split(' ')[0]
 
   return (
