@@ -20,7 +20,7 @@ Every phase maps back to a specific part of the problem. We build **bottom-up**:
 | 3 | CreditSense Score | **Q1 — Can this person repay?** | ✅ Done |
 | 4 | Financial Affordability Engine | **Q2 — How much can they safely borrow?** | ✅ Done |
 | 5 | FraudSense (Fraud & Network Risk) | **Q3 — Can we trust this application?** | ✅ Done |
-| 6 | Continuous Financial Monitoring | **Q4 — What happens after the loan is given?** | ⬜ Not started |
+| 6 | Continuous Financial Monitoring | **Q4 — What happens after the loan is given?** | ✅ Done |
 | 7 | Role Dashboards & Decision Workflow | Turns scores into an actual approve/reject | ⬜ Not started |
 | 8 | Demo Data, Polish & Deploy | Makes it provable to judges & lenders | ⬜ Not started |
 

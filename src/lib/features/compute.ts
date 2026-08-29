@@ -136,11 +136,27 @@ function computeBillFeatures(bills: RawBillPayment[]) {
     .filter((b) => b.status === 'paid_late' && b.paidAt)
     .map((b) => Math.max(0, Math.round((b.paidAt!.getTime() - b.dueDate.getTime()) / DAY_MS)))
 
-  // Streaks are counted over *months*, not over individual bills: a household
-  // with three utilities that misses one month should read as one missed
-  // month, not three missed bills in a row.
+  /**
+   * Streaks are counted over *months*, not over individual bills: a household
+   * with three utilities that misses one month should read as one missed
+   * month, not three missed bills in a row.
+   *
+   * Bills that came due within the last two weeks are excluded from the streak
+   * entirely. An unpaid bill from last Tuesday has not been *missed* — it has
+   * not been paid *yet*, and most people pay a few days after the due date.
+   * Counting it produced a phantom streak for a large share of the portfolio
+   * at any given moment, which flooded Phase 6's early-warning feed with
+   * alerts about people who were behaving completely normally.
+   *
+   * They still count against overall punctuality — that is a rate, not a
+   * judgement about right now.
+   */
+  const GRACE_DAYS = 14
+  const graceCutoff = new Date(Date.now() - GRACE_DAYS * DAY_MS)
+
   const byMonth = new Map<string, RawBillPayment[]>()
   for (const bill of bills) {
+    if (bill.status === 'unpaid' && bill.dueDate > graceCutoff) continue
     const key = monthKey(bill.billingMonth)
     const list = byMonth.get(key)
     if (list) list.push(bill)

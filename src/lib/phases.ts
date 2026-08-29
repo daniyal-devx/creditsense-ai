@@ -57,13 +57,13 @@ export const PHASES: readonly Phase[] = [
     number: 6,
     title: 'Continuous Financial Monitoring',
     answers: 'Q4 — What happens after the loan is given? Early-warning signals.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 7,
     title: 'Role Dashboards & Decision Workflow',
     answers: 'Turns the modules into an actual approve / reject decision.',
-    status: 'todo',
+    status: 'in-progress',
   },
   {
     number: 8,
