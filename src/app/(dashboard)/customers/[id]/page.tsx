@@ -31,6 +31,10 @@ import {
 import { fullFeaturesToModelInput, getCurrentScore } from '@/lib/db/scores'
 import { assessAffordability } from '@/lib/affordability/engine'
 import { AffordabilityPanel } from '@/components/affordability/affordability-panel'
+import { getFraudAssessment } from '@/lib/db/fraud'
+import { FraudBadge, FraudPanel } from '@/components/fraud/fraud-panel'
+import { buttonVariants } from '@/components/ui/button'
+import Link from 'next/link'
 import { scoreCustomer } from '@/lib/scoring/score'
 import { ScorePanel } from '@/components/score/score-panel'
 import { RiskBadge } from '@/components/risk/risk-badge'
@@ -74,12 +78,13 @@ export default async function CustomerProfilePage({
   const customer = await getCustomer(id)
   if (!customer) notFound()
 
-  const [features, bills, transactions, topups, storedScore] = await Promise.all([
+  const [features, bills, transactions, topups, storedScore, fraud] = await Promise.all([
     getCustomerFeatures(id),
     getBillHistory(id, 60),
     getRecentTransactions(id, 40),
     getTopupHistory(id, 12),
     getCurrentScore(id),
+    getFraudAssessment(id),
   ])
 
   // The scorecard is pure and fast, so the score is recomputed here from the
@@ -124,6 +129,9 @@ export default async function CustomerProfilePage({
         badge={
           <span className="flex flex-wrap items-center gap-2">
             {scored && <RiskBadge score={scored.score} showVerdict />}
+            {fraud && fraud.level !== 'clear' && (
+              <FraudBadge level={fraud.level} score={fraud.riskScore} />
+            )}
             {customer.hasBankLoanHistory ? (
               <Badge tone="neutral">Has bureau record</Badge>
             ) : (
@@ -161,6 +169,25 @@ export default async function CustomerProfilePage({
             </code>
             .
           </Alert>
+        )}
+
+        {/* ---------- can we trust this application ----------
+            Placed before affordability on purpose: if the application cannot
+            be trusted, how much to lend is the wrong next question. */}
+        {fraud && fraud.level !== 'clear' && (
+          <Section
+            title="Can we trust this application?"
+            description="Fraud signals found in the behaviour, device and identity checks."
+          >
+            <FraudPanel assessment={fraud} customerName={customer.fullName}>
+              <Link
+                href={`/fraud/${id}`}
+                className={buttonVariants({ variant: 'secondary', fullWidth: true })}
+              >
+                Open the full fraud investigation and relationship graph
+              </Link>
+            </FraudPanel>
+          </Section>
         )}
 
         {/* ---------- how much can they safely borrow ---------- */}

@@ -51,13 +51,13 @@ export const PHASES: readonly Phase[] = [
     number: 5,
     title: 'FraudSense',
     answers: 'Q3 — Can we trust this application? Anomalies and the relationship graph.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 6,
     title: 'Continuous Financial Monitoring',
     answers: 'Q4 — What happens after the loan is given? Early-warning signals.',
-    status: 'todo',
+    status: 'in-progress',
   },
   {
     number: 7,

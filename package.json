@@ -19,7 +19,8 @@
     "db:seed-users": "tsx scripts/db/seed-users.ts",
     "email:test": "tsx scripts/email-test.ts",
     "model:train": "tsx scripts/model/train.ts",
-    "db:score": "tsx scripts/db/build-scores.ts"
+    "db:score": "tsx scripts/db/build-scores.ts",
+    "db:fraud": "tsx scripts/db/build-fraud.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
