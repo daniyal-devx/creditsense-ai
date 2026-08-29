@@ -21,19 +21,19 @@ export const PHASES: readonly Phase[] = [
     number: 0,
     title: 'Foundation & Project Setup',
     answers: 'Scaffold, database connection, design tokens, shared components, responsive app shell.',
-    status: 'in-progress',
+    status: 'done',
   },
   {
     number: 1,
     title: 'Digital Signal Data Layer',
     answers: 'What can we even see about this person? Wallet, top-up and bill-payment signals.',
-    status: 'todo',
+    status: 'done',
   },
   {
     number: 2,
     title: 'Auth, Email & Access Control',
     answers: 'Signup, email verification, Google sign-in, roles and permissions.',
-    status: 'todo',
+    status: 'in-progress',
   },
   {
     number: 3,

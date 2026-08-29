@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Sparkles,
   Users,
+  Wallet,
 } from 'lucide-react'
 import type { Permission, Role } from '@/lib/auth/roles'
 import { canAny } from '@/lib/auth/roles'
@@ -57,6 +58,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
     permissions: ['applications:read'],
     primary: true,
     description: 'The decision queue',
+  },
+  {
+    href: '/customers',
+    label: 'Customers',
+    shortLabel: 'People',
+    icon: Wallet,
+    permissions: ['customers:read'],
+    description: 'The digital-signal profile behind every applicant',
   },
   {
     href: '/portfolio',

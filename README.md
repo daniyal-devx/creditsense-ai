@@ -15,7 +15,7 @@ Every phase maps back to a specific part of the problem. We build **bottom-up**:
 | # | Phase | Answers / Enables | Status |
 |---|-------|-------------------|--------|
 | 0 | Foundation & Project Setup | Nothing works without it | ✅ Done |
-| 1 | Digital Signal Data Layer | *"What can we even see about this person?"* | ⬜ Not started |
+| 1 | Digital Signal Data Layer | *"What can we even see about this person?"* | ✅ Done |
 | 2 | Auth, Email & Access Control | Signup, email verification, Google sign-in, roles | ⬜ Not started |
 | 3 | CreditSense Score | **Q1 — Can this person repay?** | ⬜ Not started |
 | 4 | Financial Affordability Engine | **Q2 — How much can they safely borrow?** | ⬜ Not started |

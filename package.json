@@ -9,7 +9,13 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run build",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:status": "tsx scripts/db/migrate.ts --status",
+    "db:seed": "tsx scripts/db/seed.ts",
+    "db:features": "tsx scripts/db/build-features.ts",
+    "db:reset": "tsx scripts/db/reset.ts",
+    "db:diagnose": "tsx scripts/db/diagnose.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
