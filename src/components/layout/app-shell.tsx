@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils/cn'
 import type { Role } from '@/lib/auth/roles'
 import { roleLabel } from '@/lib/auth/roles'
 import { isActivePath, splitForBottomNav, visibleNavItems, type NavItem } from '@/lib/navigation'
-import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Logo } from './logo'
 import { ThemeToggle } from './theme-toggle'
@@ -118,15 +117,18 @@ export function AppShell({
 
         <ThemeToggle />
 
+        {/*
+          The account menu, at every width below the desktop sidebar.
+
+          This used to render a bare <Avatar> under 640px — an image that
+          looked tappable but did nothing, leaving sign-out reachable only by
+          opening the hamburger drawer and scrolling to the bottom. A control
+          that looks like a control has to behave like one.
+        */}
         {user && (
-          <div className="hidden sm:block lg:hidden">
+          <div className="lg:hidden">
             <UserMenu user={user} compact />
           </div>
-        )}
-        {user && (
-          <span className="sm:hidden">
-            <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-          </span>
         )}
       </header>
 

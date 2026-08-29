@@ -92,6 +92,14 @@ export function DropdownTrigger({
   )
 }
 
+/** Written out in full because Tailwind cannot see a composed class name. */
+const PLACEMENT_CLASS = {
+  'top-start': 'bottom-full mb-2 left-0 origin-bottom-left',
+  'top-end': 'bottom-full mb-2 right-0 origin-bottom-right',
+  'bottom-start': 'top-full mt-2 left-0 origin-top-left',
+  'bottom-end': 'top-full mt-2 right-0 origin-top-right',
+} as const
+
 export function DropdownContent({
   children,
   align = 'end',
@@ -103,12 +111,33 @@ export function DropdownContent({
 }) {
   const { open, setOpen, triggerRef } = useMenu()
   const listRef = React.useRef<HTMLDivElement>(null)
+  const [placement, setPlacement] = React.useState<'top' | 'bottom'>('bottom')
 
+  /**
+   * Focus the first item, and flip above the trigger when there is no room
+   * below it.
+   *
+   * Three of the four account menus hang off the bottom of a full-height
+   * sidebar or drawer. A menu that only ever opens downward lands past the
+   * viewport edge on a `fixed` parent that cannot scroll: it opens, and you
+   * see nothing.
+   */
   React.useEffect(() => {
     if (!open) return
-    const first = listRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
+
+    const trigger = triggerRef.current
+    const list = listRef.current
+    if (trigger && list) {
+      const rect = trigger.getBoundingClientRect()
+      const needed = list.offsetHeight + 8
+      const fitsBelow = rect.bottom + needed <= window.innerHeight
+      const fitsAbove = rect.top - needed >= 0
+      setPlacement(!fitsBelow && fitsAbove ? 'top' : 'bottom')
+    }
+
+    const first = list?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
     first?.focus()
-  }, [open])
+  }, [open, triggerRef])
 
   if (!open) return null
 
@@ -143,8 +172,8 @@ export function DropdownContent({
       role="menu"
       onKeyDown={onKeyDown}
       className={cn(
-        'absolute z-50 mt-2 min-w-52 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-e4 animate-scale-in',
-        align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
+        'absolute z-50 min-w-52 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-e4 animate-scale-in',
+        PLACEMENT_CLASS[`${placement}-${align}`],
         className,
       )}
       onClick={() => {
