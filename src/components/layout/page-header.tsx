@@ -33,7 +33,9 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
               {item.href && !last ? (
                 <Link
                   href={item.href}
-                  className="truncate rounded transition-colors hover:text-foreground"
+                  // -my-2/py-2 reaches a 40px tap height without adding any
+                  // visible space between the crumb and the page title.
+                  className="-my-3 truncate rounded py-3 transition-colors hover:text-foreground"
                 >
                   {item.label}
                 </Link>

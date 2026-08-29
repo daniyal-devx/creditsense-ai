@@ -60,7 +60,8 @@ export function RiskDistributionChart({ distribution }: { distribution: ScoreDis
 
   return (
     <div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>Customers by risk band</caption>
         <thead>
           <tr>
@@ -81,6 +82,7 @@ export function RiskDistributionChart({ distribution }: { distribution: ScoreDis
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="h-64 w-full sm:h-72" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
@@ -149,7 +151,8 @@ export function ScoreTrendChart({ snapshots }: { snapshots: SnapshotRow[] }) {
 
   return (
     <div>
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>Average portfolio score over time</caption>
         <thead>
           <tr>
@@ -168,6 +171,7 @@ export function ScoreTrendChart({ snapshots }: { snapshots: SnapshotRow[] }) {
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="h-64 w-full sm:h-72" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">

@@ -83,7 +83,10 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(function Badg
         />
       )}
       {icon}
-      <span className="truncate">{children}</span>
+      {/* `min-w-0` is what lets `truncate` actually shrink here: a flex child
+          defaults to min-width:auto and refuses to go below its content
+          width, which pushed whole cards past the viewport at 320px. */}
+      <span className="min-w-0 truncate">{children}</span>
     </span>
   )
 })

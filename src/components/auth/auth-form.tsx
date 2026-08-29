@@ -275,7 +275,7 @@ export function ResendTimer({
       type="button"
       onClick={onResend}
       disabled={sending}
-      className="text-sm font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-60"
+      className="-my-3 inline-flex min-h-11 items-center rounded px-2 py-3 text-sm font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-60"
     >
       {sending ? 'Sending…' : 'Send a new code'}
     </button>

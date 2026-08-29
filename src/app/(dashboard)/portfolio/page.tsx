@@ -22,7 +22,14 @@ import {
   getRiskMigrations,
 } from '@/lib/db/monitoring'
 import { getScoreDistribution } from '@/lib/db/scores'
-import { formatNumber, formatPKR, formatPercent, formatRelative, titleFromSlug } from '@/lib/utils/format'
+import {
+  formatNumber,
+  formatPKR,
+  formatPKRCompact,
+  formatPercent,
+  formatRelative,
+  titleFromSlug,
+} from '@/lib/utils/format'
 
 export const metadata: Metadata = { title: 'Portfolio Risk' }
 export const dynamic = 'force-dynamic'
@@ -67,7 +74,9 @@ export default async function PortfolioPage() {
     {
       icon: Wallet,
       label: 'Outstanding',
-      value: formatPKR(health.totalOutstanding),
+      // Compact, because "Rs 21,919,969" at 24px does not fit a 136px grid
+      // cell at 320px — and lakh/crore is how a Pakistani lender says it anyway.
+      value: formatPKRCompact(health.totalOutstanding),
       detail: `${formatNumber(health.activeLoans)} live loans`,
     },
     {

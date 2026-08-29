@@ -25,7 +25,7 @@ import { getApplicationQueue, getQueueStats } from '@/lib/db/applications'
 import { getFraudQueue, getFraudStats } from '@/lib/db/fraud'
 import { getEarlyWarningFeed, getPortfolioHealth } from '@/lib/db/monitoring'
 import { getScoreDistribution } from '@/lib/db/scores'
-import { formatNumber, formatPKR, formatRelative } from '@/lib/utils/format'
+import { formatNumber, formatPKR, formatPKRCompact, formatRelative } from '@/lib/utils/format'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 export const dynamic = 'force-dynamic'
@@ -77,7 +77,7 @@ async function LoanOfficerHome() {
       title="Your decision queue"
       description="Applications waiting on you, with anything FraudSense has held at the top."
       actions={
-        <Link href="/applications" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+        <Link href="/applications" className={buttonVariants({ variant: 'secondary' })}>
           Open the queue
           <ArrowRight className="ml-2 size-4" aria-hidden="true" />
         </Link>
@@ -86,7 +86,7 @@ async function LoanOfficerHome() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatTile icon={FileText} label="Awaiting decision" value={formatNumber(stats.pending + stats.inReview)} />
-          <StatTile icon={Wallet} label="Total requested" value={formatPKR(stats.totalRequested)} />
+          <StatTile icon={Wallet} label="Total requested" value={formatPKRCompact(stats.totalRequested)} />
           <StatTile
             icon={AlertOctagon}
             label="Held for fraud"
@@ -155,7 +155,7 @@ async function FraudAnalystHome() {
       title="Fraud investigation"
       description="Applicants whose behaviour, device or identity signals need a human."
       actions={
-        <Link href="/fraud" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+        <Link href="/fraud" className={buttonVariants({ variant: 'secondary' })}>
           Open FraudSense
           <ArrowRight className="ml-2 size-4" aria-hidden="true" />
         </Link>
@@ -224,7 +224,7 @@ async function RiskAnalystHome() {
       title="Portfolio health"
       description="How risk is distributed and who is deteriorating."
       actions={
-        <Link href="/portfolio" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+        <Link href="/portfolio" className={buttonVariants({ variant: 'secondary' })}>
           Open the portfolio
           <ArrowRight className="ml-2 size-4" aria-hidden="true" />
         </Link>
@@ -233,7 +233,7 @@ async function RiskAnalystHome() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatTile icon={PieChart} label="Average score" value={formatNumber(Math.round(health.averageScore))} />
-          <StatTile icon={Wallet} label="Outstanding" value={formatPKR(health.totalOutstanding)} />
+          <StatTile icon={Wallet} label="Outstanding" value={formatPKRCompact(health.totalOutstanding)} />
           <StatTile
             icon={TrendingDown}
             label="Downgraded (30d)"
@@ -281,7 +281,10 @@ async function RiskAnalystHome() {
               title="Latest warnings"
               description="Most urgent open alerts."
               actions={
-                <Link href="/monitoring" className="text-sm font-medium text-primary hover:underline">
+                <Link
+                  href="/monitoring"
+                  className="-my-2 flex min-h-11 min-w-11 items-center justify-center rounded px-3 text-sm font-medium text-primary hover:underline"
+                >
                   All
                 </Link>
               }

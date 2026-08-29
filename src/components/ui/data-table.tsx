@@ -300,9 +300,11 @@ function Pagination<T>({ table }: { table: ReturnType<typeof useReactTable<T>> }
       </p>
 
       <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+        {/* `md` not `sm`: pagination is one of the few dense-looking controls
+            that genuinely appears on a phone, so it needs the full 44px. */}
         <Button
           variant="secondary"
-          size="sm"
+          size="md"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
           leadingIcon={<ChevronLeft className="size-4" />}
@@ -314,7 +316,7 @@ function Pagination<T>({ table }: { table: ReturnType<typeof useReactTable<T>> }
         </span>
         <Button
           variant="secondary"
-          size="sm"
+          size="md"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
           trailingIcon={<ChevronRight className="size-4" />}

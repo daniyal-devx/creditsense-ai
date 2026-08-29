@@ -21,7 +21,12 @@
     "model:train": "tsx scripts/model/train.ts",
     "db:score": "tsx scripts/db/build-scores.ts",
     "db:fraud": "tsx scripts/db/build-fraud.ts",
-    "db:monitor": "tsx scripts/db/monitor.ts"
+    "db:monitor": "tsx scripts/db/monitor.ts",
+    "demo": "tsx scripts/db/demo.ts",
+    "qa": "node scripts/test/qa.mjs",
+    "test:auth": "node scripts/test/auth-e2e.mjs",
+    "test:decision": "node scripts/test/decision-e2e.mjs",
+    "perf": "node scripts/test/perf.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
@@ -52,6 +57,7 @@
     "@types/react-dom": "^19.2.5",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.3",
+    "playwright": "^1.62.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.12",

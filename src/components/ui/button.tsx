@@ -45,7 +45,10 @@ const SIZES: Record<ButtonSize, string> = {
 }
 
 const BASE =
-  'relative inline-flex select-none items-center justify-center whitespace-nowrap font-medium ' +
+  // `min-w-0` matters: without it a long label under `whitespace-nowrap`
+  // pushes the button past the viewport instead of ellipsizing, which broke
+  // the "no horizontal scrolling, ever" rule at 320px.
+  'relative inline-flex min-w-0 select-none items-center justify-center whitespace-nowrap font-medium ' +
   'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ' +
   'disabled:pointer-events-none disabled:opacity-55 ' +
@@ -116,7 +119,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       )}
       <span
         className={cn(
-          'inline-flex items-center justify-center gap-2',
+          'inline-flex min-w-0 items-center justify-center gap-2 truncate',
           loading && 'invisible',
         )}
       >

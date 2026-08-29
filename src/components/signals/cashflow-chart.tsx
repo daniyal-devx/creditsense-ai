@@ -68,7 +68,8 @@ export function CashflowChart({
     <div className={className}>
       {/* A table conveying the same numbers, for screen readers and for anyone
           who cannot use the chart. Charts are images to assistive tech. */}
-      <table className="sr-only">
+      <div className="sr-only">
+        <table>
         <caption>Monthly money in and money out</caption>
         <thead>
           <tr>
@@ -89,6 +90,7 @@ export function CashflowChart({
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="h-64 w-full sm:h-72" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">

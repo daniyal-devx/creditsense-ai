@@ -145,7 +145,7 @@ export function AlertFeed({
                 type="button"
                 onClick={() => setFilter(level)}
                 className={cn(
-                  'flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors',
+                  'flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors sm:min-h-9',
                   filter === level
                     ? 'border-primary bg-primary-soft text-primary-soft-foreground'
                     : 'border-border text-muted-foreground hover:bg-accent',
@@ -262,7 +262,6 @@ export function AlertFeed({
                     <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
                       <Button
                         variant="secondary"
-                        size="sm"
                         loading={acknowledging === alert.alertId}
                         onClick={() => acknowledge(alert.alertId, alert.fullName)}
                         leadingIcon={<Check className="size-4" />}

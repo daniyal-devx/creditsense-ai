@@ -34,7 +34,10 @@ export function Logo({ compact = false, className }: { compact?: boolean; classN
   return (
     <Link
       href="/dashboard"
-      className={cn('flex min-w-0 items-center gap-2.5 rounded-lg', className)}
+      // -mx-2/px-2 gives the link a 44px tap height without visually
+      // inflating the header. On mobile the wordmark is sr-only, so without
+      // this the whole target would be the 32px mark.
+      className={cn('-mx-2 flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg px-2', className)}
     >
       <LogoMark />
       <span className={cn('min-w-0 truncate', compact && 'sr-only sm:not-sr-only')}>

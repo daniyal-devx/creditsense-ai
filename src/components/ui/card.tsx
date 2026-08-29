@@ -28,7 +28,12 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
     <Element
       ref={ref}
       className={cn(
-        'rounded-xl border border-border bg-surface text-surface-foreground',
+        // `min-w-0` is load-bearing. A grid or flex item defaults to
+        // min-width:auto and refuses to shrink below its own min-content
+        // width, so a card whose content had a wide unbreakable run would
+        // stretch its track past the viewport and scroll the whole page
+        // sideways. Content truncates inside the card instead.
+        'min-w-0 rounded-xl border border-border bg-surface text-surface-foreground',
         elevation === 'flat' && 'shadow-none',
         elevation === 'raised' && 'shadow-e1',
         elevation === 'floating' && 'shadow-e3',

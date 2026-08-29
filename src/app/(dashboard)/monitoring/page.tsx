@@ -13,7 +13,7 @@ import {
   getPortfolioHealth,
 } from '@/lib/db/monitoring'
 import { ALERT_TYPE_LABELS } from '@/lib/monitoring/early-warning'
-import { formatNumber, formatPKR } from '@/lib/utils/format'
+import { formatNumber, formatPKRCompact } from '@/lib/utils/format'
 
 export const metadata: Metadata = { title: 'Monitoring' }
 export const dynamic = 'force-dynamic'
@@ -59,7 +59,7 @@ export default async function MonitoringPage() {
     {
       icon: Wallet,
       label: 'At risk',
-      value: formatPKR(health.totalOutstanding),
+      value: formatPKRCompact(health.totalOutstanding),
       tone: 'text-muted-foreground',
       detail: `${formatNumber(health.delinquentLoans)} delinquent`,
     },

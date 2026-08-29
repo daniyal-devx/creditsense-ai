@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* ---------- form column ---------- */}
       <div className="flex min-h-dvh w-full flex-col lg:min-h-0 lg:w-[clamp(26rem,42%,34rem)]">
         <header className="flex h-16 shrink-0 items-center justify-between px-5 sm:px-8">
-          <Link href="/login" className="flex items-center gap-2.5 rounded-lg">
+          <Link href="/login" className="-mx-2 flex min-h-11 items-center gap-2.5 rounded-lg px-2">
             <LogoMark />
             <span className="text-[15px] font-semibold tracking-tight">CreditSense AI</span>
           </Link>

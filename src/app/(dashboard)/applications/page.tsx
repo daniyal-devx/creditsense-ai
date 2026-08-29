@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { requirePermission } from '@/lib/auth/guard'
 import { can } from '@/lib/auth/roles'
 import { getApplicationQueue, getQueueStats } from '@/lib/db/applications'
-import { formatNumber, formatPKR } from '@/lib/utils/format'
+import { formatNumber, formatPKRCompact } from '@/lib/utils/format'
 import { QueueTable } from './queue-table'
 
 export const metadata: Metadata = { title: 'Applications' }
@@ -36,7 +36,7 @@ export default async function ApplicationsPage() {
     {
       icon: Wallet,
       label: 'Total requested',
-      value: formatPKR(stats.totalRequested),
+      value: formatPKRCompact(stats.totalRequested),
       detail: 'across the open queue',
       tone: 'text-muted-foreground',
     },

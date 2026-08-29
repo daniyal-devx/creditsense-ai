@@ -59,7 +59,7 @@ export function RiskBadge({
       )}
     >
       <RiskIcon band={band} className={cn(iconSize, 'shrink-0')} />
-      <span className="truncate">
+      <span className="min-w-0 truncate">
         {band.label}
         {showVerdict && (
           <span className="font-normal opacity-90"> · {band.verdict}</span>

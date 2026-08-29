@@ -206,7 +206,10 @@ export default function DesignSystemPage() {
           <Card>
             <CardContent className="flex flex-col gap-4 p-4 pt-4 sm:p-5 sm:pt-5">
               <div>
-                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Page title</h1>
+                {/* Styled like an h1 but rendered as a <p>: the page already
+                    has its real <h1> in the PageHeader, and a second one
+                    breaks the document outline. */}
+                <p className="text-xl font-semibold tracking-tight sm:text-2xl">Page title</p>
                 <h2 className="mt-2 text-base font-semibold sm:text-lg">Section heading</h2>
                 <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
                   Body copy. Plain language over jargon — &ldquo;likely to repay&rdquo; beats
@@ -275,7 +278,7 @@ export default function DesignSystemPage() {
                 <Button trailingIcon={<ArrowRight className="size-4" />}>Continue</Button>
               </div>
 
-              <Button fullWidth>Full width — the mobile default for a primary action</Button>
+              <Button fullWidth>Full width — the mobile default</Button>
             </CardContent>
           </Card>
         </Section>
