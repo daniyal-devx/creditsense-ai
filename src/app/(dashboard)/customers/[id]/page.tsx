@@ -29,6 +29,8 @@ import {
   getTopupHistory,
 } from '@/lib/db/customers'
 import { fullFeaturesToModelInput, getCurrentScore } from '@/lib/db/scores'
+import { assessAffordability } from '@/lib/affordability/engine'
+import { AffordabilityPanel } from '@/components/affordability/affordability-panel'
 import { scoreCustomer } from '@/lib/scoring/score'
 import { ScorePanel } from '@/components/score/score-panel'
 import { RiskBadge } from '@/components/risk/risk-badge'
@@ -86,6 +88,14 @@ export default async function CustomerProfilePage({
   // panel, the contributions and the arithmetic all come from one evaluation.
   const scored = features ? scoreCustomer(fullFeaturesToModelInput(features)) : null
   const modelFeatures = features ? fullFeaturesToModelInput(features) : null
+
+  // Affordability is a separate calculation on the same signals. A score says
+  // whether they will repay; it says nothing about how much — and conflating
+  // the two over-lends to high scorers and refuses moderate ones outright.
+  const affordability =
+    scored && modelFeatures
+      ? assessAffordability({ features: modelFeatures, score: scored })
+      : null
 
   // The features cache may not have been built yet; the chart still works
   // straight from raw transactions rather than showing an empty panel.
@@ -151,6 +161,19 @@ export default async function CustomerProfilePage({
             </code>
             .
           </Alert>
+        )}
+
+        {/* ---------- how much can they safely borrow ---------- */}
+        {affordability && (
+          <Section
+            title="How much can they safely borrow?"
+            description="A specific, defensible amount — not just a risk rating."
+          >
+            <AffordabilityPanel
+              assessment={affordability}
+              customerName={customer.fullName}
+            />
+          </Section>
         )}
 
         {/* ---------- the one-sentence read ---------- */}
@@ -386,9 +409,8 @@ export default async function CustomerProfilePage({
         </div>
 
         <Alert tone="info" title="What comes next">
-          Phase 4 sizes a safe loan amount from the affordability figures above. Phase 5 checks
-          the identity and relationship signals for fraud. Phase 6 keeps re-scoring after
-          disbursement and raises an alert when the behaviour deteriorates.
+          Phase 5 checks the identity and relationship signals for fraud. Phase 6 keeps
+          re-scoring after disbursement and raises an alert when the behaviour deteriorates.
         </Alert>
       </div>
     </>

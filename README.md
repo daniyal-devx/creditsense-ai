@@ -18,7 +18,7 @@ Every phase maps back to a specific part of the problem. We build **bottom-up**:
 | 1 | Digital Signal Data Layer | *"What can we even see about this person?"* | ✅ Done |
 | 2 | Auth, Email & Access Control | Signup, email verification, Google sign-in, roles | ✅ Done |
 | 3 | CreditSense Score | **Q1 — Can this person repay?** | ✅ Done |
-| 4 | Financial Affordability Engine | **Q2 — How much can they safely borrow?** | ⬜ Not started |
+| 4 | Financial Affordability Engine | **Q2 — How much can they safely borrow?** | ✅ Done |
 | 5 | FraudSense (Fraud & Network Risk) | **Q3 — Can we trust this application?** | ⬜ Not started |
 | 6 | Continuous Financial Monitoring | **Q4 — What happens after the loan is given?** | ⬜ Not started |
 | 7 | Role Dashboards & Decision Workflow | Turns scores into an actual approve/reject | ⬜ Not started |
