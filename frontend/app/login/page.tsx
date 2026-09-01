@@ -2,12 +2,32 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
+import { legacyLogin } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+
+const demoAccounts = [
+  { label: "Admin", email: "admin@creditsense.ai", password: "admin123" },
+  { label: "Loan Officer", email: "officer@creditsense.ai", password: "officer123" },
+  { label: "Risk Manager", email: "risk@creditsense.ai", password: "risk123" },
+  { label: "Fraud Analyst", email: "fraud@creditsense.ai", password: "fraud123" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@creditsense.ai");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,14 +37,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await login(email, password);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access_token", result.access_token);
-        localStorage.setItem("user", JSON.stringify(result.user));
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        // Fall back to legacy backend auth for local development.
+        await legacyLogin(email, password);
       }
+
       router.push("/dashboard");
-    } catch (e: any) {
-      setError(e.message);
+      router.refresh();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Sign in failed";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -40,49 +68,84 @@ export default function LoginPage() {
           <p className="text-slate-400 mt-2">Risk Intelligence Platform</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-navy-900 border border-navy-700 rounded-xl p-8 space-y-5">
-          <h2 className="text-xl font-semibold text-white">Sign In</h2>
+        <Card className="bg-navy-900 border-navy-700">
+          <CardHeader>
+            <CardTitle className="text-white">Sign In</CardTitle>
+            <CardDescription className="text-slate-400">
+              Supabase Auth with local dev fallback
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <Alert
+                  variant="destructive"
+                  className="bg-red-500/10 border-red-500/30 text-red-300"
+                >
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-lg p-3">
-              {error}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-300">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-navy-800 border-navy-600 text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-slate-300">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-navy-800 border-navy-600 text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+
+            <div className="mt-6">
+              <p className="text-xs text-slate-500 mb-2">Demo quick-fill</p>
+              <div className="flex flex-wrap gap-2">
+                {demoAccounts.map((account) => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(account.email);
+                      setPassword(account.password);
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-xs border transition-colors",
+                      "bg-navy-800 border-navy-600 text-slate-300 hover:bg-navy-700 hover:text-white"
+                    )}
+                  >
+                    {account.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-navy-800 border border-navy-600 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-slate-400 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-navy-800 border border-navy-600 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-
-          <p className="text-xs text-slate-500 text-center">
-            Default: admin@creditsense.ai / admin123
-          </p>
-        </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

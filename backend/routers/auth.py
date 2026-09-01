@@ -32,16 +32,3 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
     )
 
 
-@router.post("/seed-admin")
-def seed_admin(db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == "admin@creditsense.ai").first()
-    if existing:
-        return {"message": "Admin already exists"}
-    admin = User(
-        email="admin@creditsense.ai",
-        hashed_password=hash_password("admin123"),
-        role="admin",
-    )
-    db.add(admin)
-    db.commit()
-    return {"message": "Admin user created", "email": admin.email, "role": admin.role}

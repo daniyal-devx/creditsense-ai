@@ -6,10 +6,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy.orm import Session
 from backend.core.database import SessionLocal, engine, Base
 from backend.core.auth import hash_password
-from backend.models import (
-    Customer, FinancialProfile, Application, Transaction,
-)
-from backend.models.user import User, AuditLog
+from backend.models import Customer, FinancialProfile
+from backend.models.user import User
 
 DEMO_CUSTOMERS = [
     {
@@ -207,9 +205,17 @@ def seed_admin(db: Session):
         print("Admin user already exists")
         return existing
 
+    password = os.environ.get("ADMIN_PASSWORD")
+    if not password:
+        print("ADMIN_PASSWORD not set; skipping admin seed")
+        return None
+    if len(password) < 8:
+        print("ADMIN_PASSWORD must be at least 8 characters; skipping admin seed")
+        return None
+
     admin = User(
         email="admin@creditsense.ai",
-        hashed_password=hash_password("admin123"),
+        hashed_password=hash_password(password),
         role="admin",
     )
     db.add(admin)

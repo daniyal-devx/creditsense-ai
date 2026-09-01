@@ -1,122 +1,136 @@
 """Credit model inference — loads serialized model and predicts."""
+import json
 import os
-import pickle
+from pathlib import Path
+
+import joblib
 import numpy as np
+import pandas as pd
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "ml", "models")
+from backend.services.scoring import band_and_decision, score_from_p_default
 
-
-def _get_model_path():
-    return os.path.join(MODEL_DIR, "credit_model.pkl")
-
-
-FEATURE_ORDER = [
-    "age", "employment_months", "monthly_income", "monthly_expenses",
-    "existing_debt", "credit_history_months", "income_stability",
-    "repayment_history", "late_payment_count", "transaction_count",
-    "avg_transaction", "cashflow_volatility", "digital_payment_ratio",
-    "account_age_months", "suspicious_transaction_count", "connected_accounts",
-    "loan_amount", "loan_term",
-]
-
-EMPLOYMENT_MAP = {
-    "salaried": 0, "freelancer": 1, "small_shop_owner": 2,
-    "online_seller": 3, "driver": 4, "small_business_owner": 5,
-    "informal_worker": 6,
-}
-
-LABEL_MAP_INVERSE = {0: "LOW", 1: "MEDIUM", 2: "HIGH"}
+MODEL_DIR = Path(__file__).resolve().parent.parent.parent / "ml" / "models"
+MODEL_PATH = MODEL_DIR / "credit_model.joblib"
+FALLBACK_MODEL_PATH = MODEL_DIR / "credit_model.pkl"
 
 
-def _features_to_array(features: dict) -> np.ndarray:
-    vals = [float(features.get(f, 0)) for f in FEATURE_ORDER]
-    emp = EMPLOYMENT_MAP.get(features.get("employment_type", "informal_worker"), 6)
-    vals.append(float(emp))
-    return np.array(vals).reshape(1, -1)
+def _load_artifact(path: Path = MODEL_PATH) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Credit model artifact not found at {path}. "
+            "Run 'python -m ml.training.train_credit' to train one."
+        )
+    return joblib.load(path)
+
+
+def _ensure_dataframe(features: dict, feature_cols: list[str]) -> pd.DataFrame:
+    """Build a single-row DataFrame with the exact column order the model expects."""
+    row = {col: features.get(col, 0) for col in feature_cols}
+    return pd.DataFrame([row], columns=feature_cols)
+
+
+def _employment_categories(artifact: dict) -> list[str]:
+    """Return ordered employment categories from the artifact."""
+    categories = artifact.get("employment_categories")
+    if categories is None:
+        encoder = artifact.get("label_encoder")
+        if encoder is None:
+            raise ValueError(
+                "Model artifact is missing employment category information. "
+                "Retrain the model to produce a compatible artifact."
+            )
+        categories = list(encoder.classes_)
+        artifact["employment_categories"] = categories
+    return categories
+
+
+def _encode_employment(artifact: dict, employment_type: str) -> int:
+    """Return the integer encoding for an employment type from the artifact."""
+    categories = _employment_categories(artifact)
+    if employment_type not in categories:
+        raise ValueError(
+            f"Unknown employment_type {employment_type!r}. "
+            f"Known categories: {categories}"
+        )
+    return categories.index(employment_type)
 
 
 def predict_credit(features: dict) -> dict:
-    model_path = _get_model_path()
-    if not os.path.exists(model_path):
-        return _fallback_prediction(features)
+    """Predict credit risk from a feature dictionary.
 
-    with open(model_path, "rb") as f:
-        model_data = pickle.load(f)
+    Raises:
+        FileNotFoundError: if the trained model artifact is missing.
+        ValueError: if the feature dictionary contains an unknown employment type
+            or the artifact is incompatible.
+    """
+    artifact = _load_artifact(MODEL_PATH)
+    model = artifact["model"]
+    feature_cols = artifact.get("feature_cols")
+    if not feature_cols:
+        raise ValueError("Model artifact is missing feature_cols. Retrain the model.")
 
-    model = model_data["model"]
-    X = _features_to_array(features)
+    employment_type = features.get("employment_type")
+    if employment_type is not None:
+        categories = _employment_categories(artifact)
+        if employment_type not in categories:
+            raise ValueError(
+                f"Unknown employment_type {employment_type!r}. "
+                f"Known categories: {categories}"
+            )
 
-    proba_arr = model.predict_proba(X)[0]
-    predicted_class = int(model.predict(X)[0])
-    risk_level = LABEL_MAP_INVERSE[predicted_class]
+    X = _ensure_dataframe(features, feature_cols)
+    proba = model.predict_proba(X)[0]
 
-    # Convert to score (0-1000)
-    # LOW = high score, HIGH = low score
-    if predicted_class == 0:  # LOW risk
-        score = int(700 + proba_arr[0] * 150)
-    elif predicted_class == 1:  # MEDIUM risk
-        score = int(500 + proba_arr[1] * 150)
-    else:  # HIGH risk
-        score = int(300 + proba_arr[2] * 150)
+    # Binary default model: class 1 = DEFAULT, class 0 = REPAID
+    label_map = artifact.get("label_map", {"DEFAULT": 1, "REPAID": 0})
+    p_default = float(proba[label_map["DEFAULT"]])
+    p_repaid = float(proba[label_map["REPAID"]])
 
-    score = max(0, min(1000, score))
-    repayment_prob = proba_arr[0]  # Probability of LOW risk
-
-    if score >= 700:
-        risk_level = "LOW"
-        decision = "APPROVE"
-    elif score >= 500:
-        risk_level = "MEDIUM"
-        decision = "MANUAL_REVIEW"
-    else:
-        risk_level = "HIGH"
-        decision = "REJECT"
+    score = score_from_p_default(p_default)
+    risk_level, decision = band_and_decision(score)
 
     return {
         "credit_score": score,
-        "repayment_probability": round(repayment_prob, 4),
+        "repayment_probability": round(p_repaid, 4),
         "risk_level": risk_level,
         "decision": decision,
-        "raw_proba": float(proba_arr[predicted_class]),
+        "p_default": round(p_default, 6),
+        "raw_proba": {
+            "DEFAULT": round(p_default, 4),
+            "REPAID": round(p_repaid, 4),
+        },
+        "model_version": artifact.get("model_version", "unknown"),
     }
 
 
-def _fallback_prediction(features: dict) -> dict:
-    """Rule-based fallback when no trained model is available."""
-    score = 500
-    income = features.get("monthly_income", 0)
-    expenses = features.get("monthly_expenses", 0)
-    stability = features.get("income_stability", 0.5)
-    repayment = features.get("repayment_history", 0.5)
-    acct_age = features.get("account_age_months", 0)
+def get_model_metrics() -> dict:
+    """Load the persisted credit model metrics."""
+    artifact = _load_artifact(MODEL_PATH)
+    metrics_path = artifact.get("metrics_path")
+    if not metrics_path or not Path(metrics_path).exists():
+        return {"detail": "Metrics not found for this artifact"}
+    with open(metrics_path, "r") as f:
+        return json.load(f)
 
-    if income > expenses * 1.5:
-        score += 100
-    if stability > 0.7:
-        score += 80
-    if repayment > 0.7:
-        score += 80
-    if acct_age > 12:
-        score += 50
-    if features.get("late_payment_count", 0) > 2:
-        score -= 100
-    if features.get("cashflow_volatility", 0) > 0.5:
-        score -= 50
 
-    score = max(0, min(1000, score))
-    proba = 1 - (score / 1000)
+def artifact_info() -> dict:
+    """Return version and hash metadata for the loaded credit artifact."""
+    import hashlib
 
-    if score >= 700:
-        risk_level, decision = "LOW", "APPROVE"
-    elif score >= 500:
-        risk_level, decision = "MEDIUM", "MANUAL_REVIEW"
-    else:
-        risk_level, decision = "HIGH", "REJECT"
-
-    return {
-        "credit_score": score,
-        "repayment_probability": round(1 - proba, 4),
-        "risk_level": risk_level,
-        "decision": decision,
-        "raw_proba": proba,
+    info = {
+        "model_path": str(MODEL_PATH),
+        "model_version": None,
+        "artifact_sha256": None,
+        "artifact_exists": MODEL_PATH.exists(),
     }
+    if info["artifact_exists"]:
+        try:
+            artifact = _load_artifact(MODEL_PATH)
+            info["model_version"] = artifact.get("model_version", "unknown")
+        except Exception:
+            pass
+        try:
+            info["artifact_sha256"] = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
+        except Exception:
+            pass
+    return info

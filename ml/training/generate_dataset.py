@@ -1,6 +1,9 @@
 """
 Synthetic dataset generator for CreditSense AI.
-Creates 7 personas with realistic financial profiles and deterministic credit labels.
+
+Generates a persona-correlated latent probability of default and a binary
+`default` label. The latent probability is retained in the dataset for
+calibration and evaluation but is NOT exposed to the model at train time.
 """
 import random
 import numpy as np
@@ -8,75 +11,80 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-# Set seed for reproducibility
-np.random.seed(42)
-random.seed(42)
+from ml.config import DATASET_PATH, RANDOM_SEED
+
+rng = np.random.default_rng(RANDOM_SEED)
+random.seed(RANDOM_SEED)
 
 PERSONAS = {
     "salaried": {
         "income_range": (60000, 150000),
-        "income_stability": 0.9,
+        "income_stability_mean": 0.85,
         "employment_months": (24, 120),
         "age_range": (25, 55),
-        "credit_history_months": (12, 120),
-        "digital_payment_ratio": 0.7,
-        "base_score_bias": 100,  # Generally lower risk
+        "credit_history_months": (24, 120),
+        "digital_payment_ratio_mean": 0.75,
+        "base_default_logit": -1.6,
     },
     "freelancer": {
         "income_range": (40000, 120000),
-        "income_stability": 0.5,
+        "income_stability_mean": 0.55,
         "employment_months": (6, 60),
         "age_range": (22, 45),
         "credit_history_months": (6, 60),
-        "digital_payment_ratio": 0.8,
-        "base_score_bias": 0,
+        "digital_payment_ratio_mean": 0.75,
+        "base_default_logit": -0.3,
     },
     "small_shop_owner": {
         "income_range": (35000, 90000),
-        "income_stability": 0.6,
+        "income_stability_mean": 0.65,
         "employment_months": (12, 96),
         "age_range": (28, 60),
         "credit_history_months": (12, 96),
-        "digital_payment_ratio": 0.4,
-        "base_score_bias": 20,
+        "digital_payment_ratio_mean": 0.40,
+        "base_default_logit": -0.7,
     },
     "online_seller": {
         "income_range": (30000, 100000),
-        "income_stability": 0.55,
+        "income_stability_mean": 0.55,
         "employment_months": (3, 48),
         "age_range": (20, 40),
         "credit_history_months": (3, 48),
-        "digital_payment_ratio": 0.95,
-        "base_score_bias": -20,
+        "digital_payment_ratio_mean": 0.90,
+        "base_default_logit": -0.2,
     },
     "driver": {
         "income_range": (25000, 60000),
-        "income_stability": 0.65,
+        "income_stability_mean": 0.60,
         "employment_months": (6, 60),
         "age_range": (22, 50),
         "credit_history_months": (3, 48),
-        "digital_payment_ratio": 0.6,
-        "base_score_bias": -30,
+        "digital_payment_ratio_mean": 0.55,
+        "base_default_logit": -0.5,
     },
     "small_business_owner": {
         "income_range": (50000, 200000),
-        "income_stability": 0.7,
+        "income_stability_mean": 0.70,
         "employment_months": (24, 120),
         "age_range": (30, 60),
         "credit_history_months": (24, 120),
-        "digital_payment_ratio": 0.6,
-        "base_score_bias": 50,
+        "digital_payment_ratio_mean": 0.60,
+        "base_default_logit": -1.0,
     },
     "informal_worker": {
         "income_range": (15000, 45000),
-        "income_stability": 0.3,
+        "income_stability_mean": 0.30,
         "employment_months": (1, 36),
         "age_range": (18, 55),
         "credit_history_months": (0, 24),
-        "digital_payment_ratio": 0.2,
-        "base_score_bias": -80,
+        "digital_payment_ratio_mean": 0.20,
+        "base_default_logit": 0.8,
     },
 }
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-x))
 
 
 def generate_transactions(
@@ -90,10 +98,9 @@ def generate_transactions(
     transactions = []
     base_date = datetime.now() - timedelta(days=months * 30)
 
-    # Monthly income transactions
     for i in range(months):
         date = base_date + timedelta(days=i * 30 + random.randint(0, 5))
-        income_variation = income * np.random.normal(1.0, 0.1)
+        income_variation = income * rng.normal(1.0, 0.1)
         transactions.append({
             "customer_id": customer_id,
             "amount": float(income_variation),
@@ -102,16 +109,14 @@ def generate_transactions(
             "is_suspicious": False,
         })
 
-    # Regular expenses (60-80% of income)
-    expense_ratio = np.random.uniform(0.6, 0.8)
+    expense_ratio = rng.uniform(0.6, 0.8)
     monthly_expense = income * expense_ratio
 
     for i in range(months):
-        # Multiple small transactions per month
         num_transactions = random.randint(8, 15)
         for _ in range(num_transactions):
             date = base_date + timedelta(days=i * 30 + random.randint(0, 29))
-            amount = monthly_expense / num_transactions * np.random.uniform(0.5, 1.5)
+            amount = monthly_expense / num_transactions * rng.uniform(0.5, 1.5)
             is_suspicious = random.random() < fraud_probability
             transactions.append({
                 "customer_id": customer_id,
@@ -121,10 +126,9 @@ def generate_transactions(
                 "is_suspicious": is_suspicious,
             })
 
-    # Occasional large transactions
     for _ in range(random.randint(0, 3)):
         date = base_date + timedelta(days=random.randint(0, months * 30))
-        amount = income * np.random.uniform(0.5, 2.0)
+        amount = income * rng.uniform(0.5, 2.0)
         is_suspicious = random.random() < fraud_probability * 2
         transactions.append({
             "customer_id": customer_id,
@@ -137,97 +141,77 @@ def generate_transactions(
     return transactions
 
 
-def generate_customer(
-    customer_id: int,
-    persona: str,
-    label: str = None,
-    fraud_flag: bool = False,
-) -> Dict:
-    """Generate a single customer with financial profile."""
+def generate_customer(customer_id: int, persona: str, fraud_flag: bool = False) -> Dict:
+    """Generate a single customer with a latent default probability."""
     config = PERSONAS[persona]
 
-    # Basic demographics
     age = random.randint(*config["age_range"])
     employment_months = random.randint(*config["employment_months"])
     credit_history_months = random.randint(*config["credit_history_months"])
 
-    # Financial profile
-    monthly_income = float(np.random.uniform(*config["income_range"]))
-    income_stability = float(np.random.normal(config["income_stability"], 0.1))
+    monthly_income = float(rng.uniform(*config["income_range"]))
+    income_stability = float(rng.normal(config["income_stability_mean"], 0.12))
     income_stability = max(0.0, min(1.0, income_stability))
 
-    # Expenses (40-80% of income)
-    expense_ratio = np.random.uniform(0.4, 0.8)
+    expense_ratio = rng.uniform(0.4, 0.8)
     monthly_expenses = monthly_income * expense_ratio
 
-    # Existing debt
     has_debt = random.random() < 0.3
-    existing_debt = float(monthly_income * np.random.uniform(2, 8)) if has_debt else 0.0
+    existing_debt = float(monthly_income * rng.uniform(2, 8)) if has_debt else 0.0
 
-    # Credit behavior
-    repayment_history = float(np.random.beta(5, 2)) if credit_history_months > 12 else 0.5
-    late_payments = int(np.random.poisson(2)) if repayment_history < 0.7 else 0
+    if credit_history_months > 12:
+        repayment_history = float(rng.beta(2 + 3 * (1 - config["base_default_logit"]), 3))
+    else:
+        repayment_history = 0.5
+    repayment_history = max(0.0, min(1.0, repayment_history))
 
-    # Transaction behavior
+    late_payments = int(rng.poisson(max(0.5, 3 * (1 - repayment_history))))
+
     transaction_count = random.randint(20, 100)
     avg_transaction = monthly_expenses / max(transaction_count / 6, 1)
-    cashflow_volatility = float(1.0 - income_stability + np.random.normal(0, 0.1))
+    cashflow_volatility = float(1.0 - income_stability + rng.normal(0, 0.1))
     cashflow_volatility = max(0.0, min(1.0, cashflow_volatility))
 
-    digital_payment_ratio = float(np.random.normal(config["digital_payment_ratio"], 0.15))
+    digital_payment_ratio = float(rng.normal(config["digital_payment_ratio_mean"], 0.15))
     digital_payment_ratio = max(0.0, min(1.0, digital_payment_ratio))
 
     account_age_months = max(credit_history_months, random.randint(3, 60))
 
-    # Fraud indicators
-    suspicious_count = int(np.random.poisson(5)) if fraud_flag else int(np.random.poisson(0.5))
-    connected_accounts = int(np.random.poisson(8)) if fraud_flag else int(np.random.poisson(2))
+    suspicious_count = int(rng.poisson(5)) if fraud_flag else int(rng.poisson(0.5))
+    connected_accounts = int(rng.poisson(8)) if fraud_flag else int(rng.poisson(2))
 
-    # Device fingerprint (for fraud cluster detection)
     device_fingerprint = f"device_{customer_id % 100}" if fraud_flag else f"device_{customer_id}"
 
-    # Loan request
-    loan_amount = float(monthly_income * np.random.uniform(2, 12))
+    loan_amount = float(monthly_income * rng.uniform(2, 12))
     loan_term = random.choice([6, 12, 18, 24, 36])
 
-    # Generate label if not provided
-    if label is None:
-        # Calculate base score (higher starting point)
-        base_score = 600 + config["base_score_bias"]
+    # Latent probability of default from persona + financial health.
+    dti = (monthly_expenses + (existing_debt / 12)) / max(monthly_income, 1)
 
-        # Adjust for financial health
-        dti = (monthly_expenses + (existing_debt / 12)) / monthly_income
-        if dti < 0.3:
-            base_score += 80
-        elif dti > 0.5:
-            base_score -= 80
+    logit = config["base_default_logit"]
+    logit += 2.5 * dti
+    logit -= 1.2 * income_stability
+    logit -= 0.8 * repayment_history
+    logit += 0.15 * late_payments
+    logit += 0.7 * cashflow_volatility
+    logit -= 0.02 * credit_history_months
+    logit -= 0.015 * account_age_months
+    logit += 0.08 * suspicious_count
+    logit += 0.05 * connected_accounts
+    logit += 0.3 * (digital_payment_ratio < 0.3)
+    logit -= 0.2 * (digital_payment_ratio > 0.7)
+    logit += rng.normal(0, 0.25)
 
-        if income_stability > 0.7:
-            base_score += 60
-        elif income_stability < 0.4:
-            base_score -= 60
+    p_default = float(_sigmoid(np.array([logit]))[0])
+    p_default = max(0.001, min(0.999, p_default))
+    default = bool(rng.random() < p_default)
 
-        if credit_history_months > 24:
-            base_score += 60
-        elif credit_history_months < 6:
-            base_score -= 40
-
-        if repayment_history > 0.7:
-            base_score += 80
-        elif repayment_history < 0.5:
-            base_score -= 60
-
-        # Add noise
-        base_score += int(np.random.normal(0, 40))
-        base_score = max(300, min(850, base_score))
-
-        # Determine label (adjusted thresholds)
-        if base_score >= 650:
-            label = "LOW"
-        elif base_score >= 450:
-            label = "MEDIUM"
-        else:
-            label = "HIGH"
+    if p_default < 0.20:
+        risk_band = "LOW"
+    elif p_default < 0.45:
+        risk_band = "MEDIUM"
+    else:
+        risk_band = "HIGH"
 
     return {
         "customer_id": customer_id,
@@ -251,40 +235,37 @@ def generate_customer(
         "device_fingerprint": device_fingerprint,
         "loan_amount": loan_amount,
         "loan_term": loan_term,
-        "label": label,
+        "p_default": round(p_default, 6),
+        "default": int(default),
+        "risk_band": risk_band,
         "fraud_flag": fraud_flag,
     }
 
 
-def generate_dataset(n_customers: int = 1000) -> pd.DataFrame:
+def generate_dataset(n_customers: int = 2000) -> pd.DataFrame:
     """Generate complete synthetic dataset."""
-    customers = []
     personas_list = list(PERSONAS.keys())
+    customers = []
 
     for i in range(n_customers):
-        # Distribute personas
         persona = personas_list[i % len(personas_list)]
-
-        # 5% fraud rate
         fraud_flag = random.random() < 0.05
-
-        customer = generate_customer(
+        customers.append(generate_customer(
             customer_id=i + 1,
             persona=persona,
             fraud_flag=fraud_flag,
-        )
-        customers.append(customer)
+        ))
 
     df = pd.DataFrame(customers)
+    df.to_csv(DATASET_PATH, index=False)
 
-    # Save to CSV
-    df.to_csv("ml/data/credit_dataset.csv", index=False)
     print(f"Generated {len(df)} customers")
-    print(f"Label distribution:\n{df['label'].value_counts()}")
+    print(f"Default rate: {df['default'].mean():.2%}")
+    print(f"Risk band distribution:\n{df['risk_band'].value_counts()}")
     print(f"Fraud rate: {df['fraud_flag'].mean():.2%}")
-
+    print(f"Saved to {DATASET_PATH}")
     return df
 
 
 if __name__ == "__main__":
-    df = generate_dataset(1000)
+    generate_dataset(2000)

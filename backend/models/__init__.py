@@ -90,8 +90,8 @@ class RiskLevel(str, enum.Enum):
 
 class Decision(str, enum.Enum):
     APPROVE = "APPROVE"
-    REJECT = "REJECT"
-    MANUAL_REVIEW = "MANUAL_REVIEW"
+    REVIEW = "REVIEW"
+    DECLINE = "DECLINE"
 
 
 class RiskAssessment(Base):

@@ -122,13 +122,16 @@ def train_model():
     model_data = {
         "model": model,
         "label_encoder": le,
+        "employment_categories": list(le.classes_),
         "feature_cols": feature_cols,
         "label_map": label_map,
         "model_type": MODEL_TYPE,
+        "model_version": "v2",
     }
     with open("ml/models/credit_model.pkl", "wb") as f:
         pickle.dump(model_data, f)
     print("\nModel saved to ml/models/credit_model.pkl")
+    print(f"Employment categories: {le.classes_}")
 
     return model, accuracy
 

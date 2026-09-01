@@ -1,0 +1,7 @@
+{
+  "model_version": "v3",
+  "artifact": "credit_model.joblib",
+  "artifact_sha256": "6a0c5912d9c05bed3ce50bd72bfaa43d880372af8b0b905b29fe9cebbcf402cd",
+  "generated_at": "2026-09-01T12:02:24.195134+00:00",
+  "note": "Canonical credit scoring artifact. Regenerate with python -m ml.training.train_credit"
+}

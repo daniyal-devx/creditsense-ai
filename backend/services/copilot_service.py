@@ -1,8 +1,27 @@
-"""AI Risk Copilot — Module 6: grounded LLM responses."""
+"""AI Risk Copilot — Module 6: grounded, guard-railed LLM responses."""
+import re
+from typing import Dict, List
+
 from sqlalchemy.orm import Session
-from backend.models import Customer, Application, RiskAssessment, RiskFactor, FraudAlert, FinancialProfile
-from backend.schemas import CopilotResponse
+
 from backend.core.config import settings
+from backend.models import Application, Customer, FinancialProfile, FraudAlert, RiskAssessment, RiskFactor
+from backend.schemas import CopilotResponse
+from backend.services.llm.groq_client import generate_copilot_answer
+
+
+# Verbs the copilot must not use to make or imply a lending decision.
+_FORBIDDEN_DECISION_VERBS = {
+    "approve",
+    "decline",
+    "reject",
+    "lend",
+    "disburse",
+    "grant",
+    "deny",
+    "accept",
+    "refuse",
+}
 
 
 def _build_context(customer_id: int, db: Session) -> dict:
@@ -65,45 +84,13 @@ def _build_context(customer_id: int, db: Session) -> dict:
     return context
 
 
-def generate_copilot_response(customer_id: int, question: str, db: Session) -> CopilotResponse:
-    context = _build_context(customer_id, db)
-
-    if not context:
-        return CopilotResponse(
-            customer_id=customer_id,
-            question=question,
-            answer="No customer data found.",
-            sources_referenced=[],
-        )
-
-    prompt = _build_prompt(context, question)
-
-    if settings.anthropic_api_key and settings.anthropic_api_key != "sk-ant-placeholder":
-        try:
-            answer = _call_claude(prompt)
-            return CopilotResponse(
-                customer_id=customer_id,
-                question=question,
-                answer=answer,
-                sources_referenced=list(context.keys()),
-            )
-        except Exception:
-            pass
-
-    answer = _rule_based_answer(context, question)
-    return CopilotResponse(
-        customer_id=customer_id,
-        question=question,
-        answer=answer,
-        sources_referenced=list(context.keys()),
-    )
-
-
 def _build_prompt(context: dict, question: str) -> str:
     context_str = "\n".join(f"- {k}: {v}" for k, v in context.items())
     return f"""You are CreditSense AI Risk Copilot. Answer the question using ONLY the data below.
 If something is not in the data, say "This information is not available in the customer's record."
 Never invent numbers or make assumptions beyond what is provided.
+You MUST NOT approve, decline, reject, lend, disburse, grant, deny, accept, or refuse any application.
+If the user asks you to make a decision, explain that only the risk orchestrator can do that and direct them to the displayed decision.
 
 Customer Risk Assessment Data:
 {context_str}
@@ -113,15 +100,18 @@ Question: {question}
 Answer:"""
 
 
-def _call_claude(prompt: str) -> str:
-    import anthropic
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
+def _guard_answer(answer: str, context: dict) -> str:
+    """Deflect any answer that appears to contain an independent decision verb."""
+    lowered = answer.lower()
+    tokens = re.findall(r"\b[a-z]+\b", lowered)
+    if any(verb in tokens for verb in _FORBIDDEN_DECISION_VERBS):
+        decision = context.get("decision", "the system's recommendation")
+        return (
+            "I can't make or change lending decisions. "
+            f"The stored system recommendation for this customer is: {decision}. "
+            "Please review the risk assessment details above or escalate to a human officer."
+        )
+    return answer
 
 
 def _rule_based_answer(context: dict, question: str) -> str:
@@ -180,3 +170,70 @@ def _rule_based_answer(context: dict, question: str) -> str:
         f"Decision: {context.get('decision', 'N/A')}. "
         f"Please ask more specific questions about the score, factors, affordability, or fraud risk."
     )
+
+
+def _persist_conversation(customer_id: int, question: str, response: CopilotResponse, db: Session) -> None:
+    """Placeholder: persist conversation/message rows once Wave 2 schema lands."""
+    # Wave 2 will add `copilot_conversations` and `copilot_messages` tables.
+    # For now we avoid writing to non-existent tables so the service stays testable.
+    pass
+
+
+def generate_copilot_response(customer_id: int, question: str, db: Session) -> CopilotResponse:
+    context = _build_context(customer_id, db)
+
+    if not context:
+        return CopilotResponse(
+            customer_id=customer_id,
+            question=question,
+            answer="No customer data found.",
+            sources_referenced=[],
+            grounded_fields=[],
+            decision_source="system",
+            mode="template",
+        )
+
+    # Independent decision prompts are deflected immediately.
+    q_lower = question.lower()
+    tokens = re.findall(r"\b[a-z]+\b", q_lower)
+    if any(verb in tokens for verb in _FORBIDDEN_DECISION_VERBS):
+        answer = (
+            "I can't make or change lending decisions. "
+            f"The stored system recommendation for this customer is: {context.get('decision', 'N/A')}."
+        )
+        response = CopilotResponse(
+            customer_id=customer_id,
+            question=question,
+            answer=answer,
+            sources_referenced=sorted(context.keys()),
+            grounded_fields=["decision"],
+            decision_source="system",
+            mode="template",
+        )
+        _persist_conversation(customer_id, question, response, db)
+        return response
+
+    system_prompt = _build_prompt(context, question)
+    user_prompt = question
+    llm_result = generate_copilot_answer(system_prompt=system_prompt, user_prompt=user_prompt)
+
+    if llm_result.get("mode") == "offline_template":
+        answer = _rule_based_answer(context, question)
+        mode = "offline_template"
+        decision_source = "llm_offline"
+    else:
+        answer = _guard_answer(llm_result["answer"], context)
+        mode = "llm"
+        decision_source = "system" if answer != llm_result["answer"] else "llm"
+
+    response = CopilotResponse(
+        customer_id=customer_id,
+        question=question,
+        answer=answer,
+        sources_referenced=sorted(context.keys()),
+        grounded_fields=sorted(context.keys()),
+        decision_source=decision_source,
+        mode=mode,
+    )
+    _persist_conversation(customer_id, question, response, db)
+    return response

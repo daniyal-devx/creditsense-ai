@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.config import settings
-from backend.core.database import Base, engine
+from backend.core.database import Base, engine, get_db_dialect
 from backend.routers import (
     customers,
     applications,
@@ -13,6 +13,7 @@ from backend.routers import (
     copilot,
     dashboard,
     auth,
+    model as model_router,
 )
 
 app = FastAPI(
@@ -38,11 +39,19 @@ app.include_router(explanation.router)
 app.include_router(financial_health.router)
 app.include_router(copilot.router)
 app.include_router(dashboard.router)
+app.include_router(model_router.router)
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "CreditSense AI"}
+    from backend.services.credit_model import artifact_info
+
+    return {
+        "status": "healthy",
+        "service": "CreditSense AI",
+        "db_dialect": get_db_dialect(),
+        **artifact_info(),
+    }
 
 
 @app.on_event("startup")

@@ -32,7 +32,7 @@ class RiskOrchestrator:
 
         if fraud_result["fraud_flag"] or graph_result.get("cluster_detected", False):
             if risk_level == "LOW":
-                decision = "MANUAL_REVIEW"
+                decision = "REVIEW"
                 risk_level = "MEDIUM"
 
         assessment = RiskAssessment(
@@ -78,7 +78,7 @@ class RiskOrchestrator:
             )
             self.db.add(fa)
 
-        application.status = decision.lower().replace("_", "_")
+        application.status = _decision_to_status(decision)
         self.db.commit()
         self.db.refresh(assessment)
 
@@ -142,3 +142,12 @@ class RiskOrchestrator:
     def _run_explanation(self, features, credit_result):
         from backend.services.explainability import generate_explanation
         return generate_explanation(features, credit_result)
+
+
+def _decision_to_status(decision: str) -> str:
+    mapping = {
+        "APPROVE": "approved",
+        "REVIEW": "manual_review",
+        "DECLINE": "rejected",
+    }
+    return mapping.get(decision, "pending")

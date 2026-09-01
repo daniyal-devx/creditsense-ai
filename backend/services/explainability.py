@@ -1,116 +1,101 @@
-"""Explainability service — Module 5: SHAP-based explanations."""
+"""Explainability service — SHAP-based risk factor explanations."""
 import os
-import numpy as np
+from pathlib import Path
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "ml", "models")
+import joblib
+import numpy as np
+import pandas as pd
+
+from ml.config import CREDIT_EXPLAINER_PATH
 
 FEATURE_LABELS = {
+    "age": "Customer age",
+    "employment_months": "Employment tenure",
+    "employment_type": "Employment type",
     "monthly_income": "Monthly income level",
     "monthly_expenses": "Monthly expenses",
     "existing_debt": "Existing debt burden",
+    "credit_history_months": "Credit history length",
+    "income_stability": "Income consistency",
+    "repayment_history": "Repayment track record",
+    "late_payment_count": "Late payment frequency",
     "transaction_count": "Transaction activity level",
     "avg_transaction": "Average transaction size",
     "cashflow_volatility": "Cashflow stability",
     "digital_payment_ratio": "Digital payment adoption",
     "account_age_months": "Account history length",
-    "income_stability": "Income consistency",
-    "repayment_history": "Repayment track record",
-    "late_payment_count": "Late payment frequency",
     "suspicious_transaction_count": "Suspicious transaction count",
     "connected_accounts": "Connected account count",
-    "merchant_count": "Merchant relationship count",
-    "age": "Customer age",
     "loan_amount": "Requested loan amount",
     "loan_term": "Loan tenure",
-    "employment_type": "Employment type",
-}
-
-POSITIVE_TEMPLATES = {
-    "monthly_income": "Stable monthly income",
-    "income_stability": "Consistent income pattern",
-    "repayment_history": "Positive repayment history",
-    "account_age_months": "Established account history",
-    "transaction_count": "Consistent transaction activity",
-    "digital_payment_ratio": "Strong digital payment adoption",
-    "low_existing_debt": "Low debt burden",
-    "cashflow_volatility_low": "Stable cashflow pattern",
-}
-
-NEGATIVE_TEMPLATES = {
-    "cashflow_volatility": "Increased income volatility",
-    "late_payment_count": "History of late payments",
-    "existing_debt": "High existing debt burden",
-    "suspicious_transaction_count": "Unusual transaction patterns detected",
-    "income_stability_low": "Irregular income pattern",
-    "account_age_months": "Limited account history",
-    "connected_accounts": "Multiple connected accounts",
 }
 
 
-def generate_explanation(features: dict, credit_result: dict) -> dict:
-    # Use rule-based explanation for stability
-    # SHAP path can be re-enabled after debugging multi-class output handling
-    return _rule_based_explanation(features, credit_result)
+def _load_explainer_artifact(path: Path = CREDIT_EXPLAINER_PATH):
+    if not path.exists():
+        raise FileNotFoundError(f"SHAP explainer artifact not found at {path}")
+    return joblib.load(path)
 
 
-def _shap_explanation(features: dict, explainer_path: str, model_path: str) -> dict:
-    import pickle
+def _shap_values_for_default(explainer, X_transformed: np.ndarray) -> np.ndarray:
+    """Return SHAP values for the positive (default) class.
 
-    try:
-        with open(explainer_path, "rb") as f:
-            explainer = pickle.load(f)
-    except Exception:
-        return _rule_based_explanation(features, {})
+    shap.TreeExplainer can return either a single array (binary positive class)
+    or a list of arrays (one per class). We always return the default-class values.
+    """
+    shap_out = explainer.shap_values(X_transformed)
+    if isinstance(shap_out, list):
+        # Index 1 corresponds to the positive class for binary classification.
+        sv = np.asarray(shap_out[1])
+    elif hasattr(shap_out, "values"):
+        sv = np.asarray(shap_out.values)
+    else:
+        sv = np.asarray(shap_out)
 
-    from backend.services.credit_model import _features_to_array, FEATURE_ORDER, EMPLOYMENT_MAP
+    # If the explainer returned values for both classes with shape (2, n_samples, n_features),
+    # select the positive class.
+    if sv.ndim == 3 and sv.shape[0] == 2:
+        sv = sv[1]
+    return sv
 
-    try:
-        X = _features_to_array(features)
-        shap_values = explainer.shap_values(X)
 
-        # Handle multi-class: shap_values is a list of arrays, one per class
-        if isinstance(shap_values, list):
-            # Use the first class (LOW risk) SHAP values for explanation
-            sv = np.array(shap_values[0][0])
-        elif hasattr(shap_values, 'values'):
-            # TreeExplainer may return Explanation object
-            sv = np.array(shap_values.values[0])
-        else:
-            sv = np.array(shap_values[0])
-    except Exception:
-        return _rule_based_explanation(features, {})
+def _shap_explanation(features: dict) -> dict:
+    artifact = _load_explainer_artifact()
+    explainer = artifact["explainer"]
+    preprocessor = artifact["preprocessor"]
+    feature_names = list(artifact.get("feature_names", preprocessor.get_feature_names_out()))
 
-    all_features = FEATURE_ORDER + ["employment_type_encoded"]
+    # Build DataFrame with the exact column order the preprocessor expects.
+    feature_cols = list(preprocessor.feature_names_in_) if hasattr(preprocessor, "feature_names_in_") else feature_names
+    row = {col: features.get(col, 0) for col in feature_cols}
+    X = pd.DataFrame([row], columns=feature_cols)
+    X_transformed = preprocessor.transform(X)
+
+    sv = _shap_values_for_default(explainer, X_transformed)[0]
+
     factors = []
-
-    for i, feat in enumerate(all_features):
+    for i, feat in enumerate(feature_names):
         if i >= len(sv):
             break
         val = float(sv[i])
-        label = FEATURE_LABELS.get(feat, feat.replace("_", " ").title())
-
-        if abs(val) < 0.01:
+        if abs(val) < 1e-6:
             continue
 
-        if feat == "existing_debt" and val < 0:
-            factors.append({"factor": "Low debt burden", "direction": "positive", "weight": abs(val)})
-        elif feat == "existing_debt" and val > 0:
-            factors.append({"factor": "High existing debt burden", "direction": "negative", "weight": abs(val)})
-        elif feat == "cashflow_volatility" and val < 0:
-            factors.append({"factor": "Stable cashflow pattern", "direction": "positive", "weight": abs(val)})
-        elif feat == "cashflow_volatility" and val > 0:
-            factors.append({"factor": "Increased income volatility", "direction": "negative", "weight": abs(val)})
-        elif val > 0:
-            factors.append({"factor": f"Strong {label.lower()}", "direction": "positive", "weight": abs(val)})
+        label = FEATURE_LABELS.get(feat, feat.replace("_", " ").title())
+
+        # Positive SHAP value pushes toward default (negative for the applicant).
+        # Negative SHAP value pushes away from default (positive for the applicant).
+        if val > 0:
+            factors.append({"factor": f"Increased {label.lower()}", "direction": "negative", "weight": abs(val)})
         else:
-            factors.append({"factor": f"Weak {label.lower()}", "direction": "negative", "weight": abs(val)})
+            factors.append({"factor": f"Strong {label.lower()}", "direction": "positive", "weight": abs(val)})
 
     factors.sort(key=lambda x: x["weight"], reverse=True)
+    return {"factors": factors[:8], "method": "shap"}
 
-    return {"factors": factors[:8]}
 
-
-def _rule_based_explanation(features: dict, credit_result: dict) -> dict:
+def _rule_based_explanation(features: dict) -> dict:
+    """Deterministic fallback when SHAP artifacts are missing or fail."""
     factors = []
 
     if features.get("monthly_income", 0) > features.get("monthly_expenses", 0) * 1.3:
@@ -149,4 +134,12 @@ def _rule_based_explanation(features: dict, credit_result: dict) -> dict:
     if features.get("account_age_months", 0) < 6:
         factors.append({"factor": "Limited account history", "direction": "negative", "weight": 0.15})
 
-    return {"factors": factors[:8]}
+    return {"factors": factors[:8], "method": "rule_based"}
+
+
+def generate_explanation(features: dict, credit_result: dict = None) -> dict:
+    """Generate SHAP-based explanation, falling back to rule-based if SHAP fails."""
+    try:
+        return _shap_explanation(features)
+    except Exception:
+        return _rule_based_explanation(features)

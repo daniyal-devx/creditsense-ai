@@ -141,6 +141,7 @@ class FinancialHealthPoint(BaseModel):
     expenses: Optional[float] = None
     distress_flag: bool = False
     note: Optional[str] = None
+    synthetic: bool = True
 
 
 class FinancialHealthResponse(BaseModel):
@@ -158,6 +159,13 @@ class CopilotResponse(BaseModel):
     question: str
     answer: str
     sources_referenced: List[str] = []
+    grounded_fields: List[str] = []
+    decision_source: str = "system"  # "system" | "llm_offline"
+    disclaimer: str = (
+        "This response is grounded in the stored risk assessment only. "
+        "It does not constitute lending advice and cannot approve or decline applications."
+    )
+    mode: str = "template"  # "llm" | "template" | "offline_template"
 
 
 class DashboardMetrics(BaseModel):
