@@ -1,13 +1,23 @@
-"""Seed the database with admin user and 7 demo persona customers."""
-import sys
+"""Seed the database with an admin user and seven demo persona customers."""
+import argparse
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
-from backend.core.database import SessionLocal, engine, Base
+
 from backend.core.auth import hash_password
+from backend.core.database import Base, SessionLocal, engine
 from backend.models import Customer, FinancialProfile
 from backend.models.user import User
+
+DEMO_AUTH_USERS = (
+    ("admin@creditsense.ai", "admin123", "admin"),
+    ("officer@creditsense.ai", "officer123", "loan_officer"),
+    ("risk@creditsense.ai", "risk123", "risk_manager"),
+    ("fraud@creditsense.ai", "fraud123", "fraud_analyst"),
+)
 
 DEMO_CUSTOMERS = [
     {
@@ -199,6 +209,12 @@ def create_tables():
     Base.metadata.create_all(bind=engine)
 
 
+def reset_database():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    print("Database schema reset")
+
+
 def seed_admin(db: Session):
     existing = db.query(User).filter(User.email == "admin@creditsense.ai").first()
     if existing:
@@ -223,6 +239,24 @@ def seed_admin(db: Session):
     db.refresh(admin)
     print(f"Admin user created: {admin.email}")
     return admin
+
+
+def seed_demo_auth(db: Session):
+    for email, password, role in DEMO_AUTH_USERS:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.hashed_password = hash_password(password)
+            user.role = role
+        else:
+            db.add(
+                User(
+                    email=email,
+                    hashed_password=hash_password(password),
+                    role=role,
+                )
+            )
+    db.commit()
+    print(f"Seeded {len(DEMO_AUTH_USERS)} local demo accounts")
 
 
 def seed_customers(db: Session):
@@ -269,12 +303,36 @@ def seed_customers(db: Session):
     print(f"Created {len(DEMO_CUSTOMERS)} demo customers")
 
 
-if __name__ == "__main__":
-    create_tables()
+def main():
+    parser = argparse.ArgumentParser(description="Seed deterministic CreditSense demo data.")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Drop and recreate all tables before seeding.",
+    )
+    parser.add_argument(
+        "--demo-auth",
+        action="store_true",
+        help="Seed the local-only quick-fill demo accounts.",
+    )
+    args = parser.parse_args()
+
+    if args.reset:
+        reset_database()
+    else:
+        create_tables()
+
     db = SessionLocal()
     try:
-        seed_admin(db)
+        if args.demo_auth:
+            seed_demo_auth(db)
+        else:
+            seed_admin(db)
         seed_customers(db)
     finally:
         db.close()
     print("Database seeded successfully")
+
+
+if __name__ == "__main__":
+    main()

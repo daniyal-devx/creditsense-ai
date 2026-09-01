@@ -37,14 +37,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      let signedInWithSupabase = false;
+      try {
+        const supabase = createClient();
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        signedInWithSupabase = !signInError;
+      } catch {
+        signedInWithSupabase = false;
+      }
 
-      if (signInError) {
-        // Fall back to legacy backend auth for local development.
+      if (!signedInWithSupabase) {
         await legacyLogin(email, password);
       }
 

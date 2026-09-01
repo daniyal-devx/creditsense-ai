@@ -34,13 +34,18 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isLoginPage = pathname === "/login";
 
-  if (!user && !isLoginPage) {
+  // The legacy dev login keeps its token in localStorage, which is unreadable here.
+  const hasLegacySession =
+    process.env.NODE_ENV !== "production" && request.cookies.has("legacy_session");
+  const isAuthenticated = Boolean(user) || hasLegacySession;
+
+  if (!isAuthenticated && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPage) {
+  if (isAuthenticated && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

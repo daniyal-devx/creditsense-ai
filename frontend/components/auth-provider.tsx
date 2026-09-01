@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
+      document.cookie = "legacy_session=; path=/; max-age=0; samesite=lax";
     }
     setUser(null);
   }

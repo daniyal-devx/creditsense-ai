@@ -10,10 +10,10 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U creditsense"]
+      test: ["CMD-SHELL", "pg_isready -U creditsense -d creditsense"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   backend:
     build:
@@ -22,26 +22,54 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://creditsense:creditsense@db:5432/creditsense
+      DATABASE_URL: postgresql+psycopg://creditsense:creditsense@db:5432/creditsense
+      DB_STRICT: "true"
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       CORS_ORIGINS: http://localhost:3000
+      ENVIRONMENT: development
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./ml/models:/app/ml/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  seed:
+    profiles: ["seed"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "scripts/seed_db.py", "--reset", "--demo-auth"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://creditsense:creditsense@db:5432/creditsense
+      DB_STRICT: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: "no"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:54321}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-local-placeholder}
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:54321}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-local-placeholder}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:

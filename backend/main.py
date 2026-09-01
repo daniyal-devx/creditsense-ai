@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,10 +18,21 @@ from backend.routers import (
     model as model_router,
 )
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    import backend.models  # noqa: F401
+    import backend.models.user  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 app = FastAPI(
     title="CreditSense AI",
     description="Explainable financial-risk intelligence platform",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -52,10 +65,3 @@ def health():
         "db_dialect": get_db_dialect(),
         **artifact_info(),
     }
-
-
-@app.on_event("startup")
-def on_startup():
-    import backend.models  # noqa: ensure models are imported
-    import backend.models.user  # noqa
-    Base.metadata.create_all(bind=engine)

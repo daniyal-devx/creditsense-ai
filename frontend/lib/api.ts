@@ -108,6 +108,9 @@ export async function legacyLogin(email: string, password: string) {
   if (typeof window !== "undefined") {
     localStorage.setItem("access_token", result.access_token);
     localStorage.setItem("user", JSON.stringify(result.user));
+    if (process.env.NODE_ENV !== "production") {
+      document.cookie = "legacy_session=1; path=/; max-age=28800; samesite=lax";
+    }
   }
 
   return result;

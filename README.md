@@ -1,94 +1,61 @@
 # CreditSense AI
 
-Explainable, API-first financial-risk intelligence platform that helps Pakistani lenders decide who to lend to, how much, and how safely.
+Explainable, API-first financial-risk intelligence for a lending demo. It assesses synthetic customer profiles with calibrated credit risk, affordability, fraud signals, graph relationships, financial health, and a guarded AI copilot.
 
-> **Honesty note:** CreditSense AI is a demonstrable prototype built for the Alibaba Cloud AI Hackathon Pakistan 2026. The training data is synthetic, the risk model is not licensed for production lending decisions, and the platform does not constitute financial, legal, or credit-advisory advice.
+> **Prototype notice:** This project was built for the Alibaba Cloud AI Hackathon Pakistan 2026. Its data is synthetic and its models are not suitable for real lending, financial, legal, or credit decisions.
 
-## Quick Start (Local Development)
-
-### Prerequisites
-- Python 3.12
-- Node.js 20+
-- A Supabase project (see Wave 0 in `docs/DEPLOYMENT.md`)
-- A Groq API key
-
-### 1. Environment
+## What is verified locally
 
 ```bash
-cp .env.example .env
-# Edit .env with your Supabase + Groq credentials
-cp frontend/.env.local.example frontend/.env.local
-# Edit frontend/.env.local with your Supabase public credentials
+python -m pytest
+python scripts/verify_demo.py
+cd frontend && npm ci && npm run build
 ```
 
-### 2. Backend
+The backend suite and demo verifier do not need Supabase or Groq credentials. The frontend build needs public Supabase placeholders only; `frontend/.env.local.example` lists the required names.
+
+## Local development
+
+### Backend
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-alembic upgrade head        # Run migrations
-python scripts/seed_db.py   # Seed demo customers
+python -m pip install -r requirements.txt
+python scripts/seed_db.py --reset --demo-auth
 uvicorn backend.main:app --reload --port 8000
 ```
 
-### 3. Frontend
+`--demo-auth` seeds the four local quick-fill accounts after resetting the current local schema. Use it only with disposable demo data. Without that flag, `python scripts/seed_db.py` preserves the environment-password `ADMIN_PASSWORD` behavior.
+
+### Frontend
 
 ```bash
 cd frontend
-npm install
+cp .env.local.example .env.local
+npm ci
 npm run dev
 ```
 
-- Backend API: http://localhost:8000
-- Frontend: http://localhost:3000
-- API Docs: http://localhost:8000/docs
+Set `NEXT_PUBLIC_API_URL` to the reachable backend address. Browser-side requests use this value directly.
 
-## Architecture
+### Docker Compose
 
-- **Backend:** FastAPI + SQLAlchemy + Supabase PostgreSQL
-- **Auth:** Supabase Auth with JWT verification and role-based access control
-- **Frontend:** Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui
-- **ML:** scikit-learn + XGBoost, calibrated probabilities, SHAP explainability
-- **Fraud:** Isolation Forest + NetworkX graph analysis + PostgreSQL recursive CTEs
-- **LLM:** Groq `llama-3.3-70b-versatile` for the AI Risk Copilot
-
-## API Endpoints
-
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/v1/auth/me` | GET | Current user |
-| `/api/v1/auth/logout` | POST | Sign out |
-| `/api/v1/customers` | POST/GET | Customer CRUD |
-| `/api/v1/applications` | POST | Loan applications |
-| `/api/v1/risk-assessment` | POST | Full risk pipeline |
-| `/api/v1/customers/{id}/fraud-risk` | GET | Fraud alerts + graph |
-| `/api/v1/customers/{id}/explanation` | GET | SHAP explanations |
-| `/api/v1/customers/{id}/financial-health` | GET | Monitoring timeline |
-| `/api/v1/copilot/query` | POST | AI copilot |
-| `/api/v1/dashboard/metrics` | GET | Dashboard metrics |
-| `/api/v1/model/metrics` | GET | Model performance metrics |
-
-## Project Structure
-
-```
-creditsense-ai/
-├── frontend/          # Next.js app
-├── backend/           # FastAPI app
-├── ml/                # Training scripts, models, reports
-├── data/              # Synthetic dataset
-├── scripts/           # Setup/seed scripts
-├── tests/             # Backend + ML tests
-├── alembic/           # Database migrations
-├── docker/            # Docker configs
-├── docker-compose.yml
-└── requirements.txt
+```bash
+docker compose up --build
+docker compose --profile seed up seed
 ```
 
-## Important Limitations
+The main stack starts PostgreSQL, the FastAPI backend, and the Next.js frontend. The optional `seed` profile resets the Compose database and loads demo personas; use it only for disposable local data.
 
-- **Synthetic data:** All customer profiles, transactions, and outcomes are generated for demo purposes.
-- **Not a credit bureau:** The platform does not connect to real financial institutions or regulatory systems.
-- **Model risk:** The XGBoost classifier is trained on a small synthetic dataset and should not be used for real lending.
-- **Deterministic demos:** The monitoring timeline is synthetic and deterministic to ensure repeatable hackathon demos.
-- **No compliance claims:** CreditSense AI is not PCI-DSS, SOC 2, or banking-regulation certified.
+## Environment
+
+Copy `.env.example` for production-shaped backend settings. At minimum, configure the database URL, a strong `JWT_SECRET`, allowed `CORS_ORIGINS`, and—when using the copilot—a `GROQ_API_KEY`. Production frontend deployments require `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+## Deployment status
+
+- `railway.json` deploys the backend Docker image and checks `/health`.
+- `frontend/vercel.json` uses reproducible `npm ci` and `npm run build` commands.
+- Supabase schema migrations, RLS, and production Supabase Auth are not implemented yet. The prototype currently initializes its SQLAlchemy schema at application startup and retains a legacy local-auth fallback.
+
+See `docs/` for architecture, API, model and dataset cards, security notes, deployment instructions, and the demo script.
