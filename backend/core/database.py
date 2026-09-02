@@ -27,6 +27,7 @@ if db_dialect == "postgresql":
         pool_size=5,
         max_overflow=10,
         pool_recycle=1800,
+        connect_args={"prepare_threshold": 0},
     )
 else:
     engine = create_engine(
