@@ -22,16 +22,22 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://creditsense:creditsense@db:5432/creditsense
-      DB_STRICT: "true"
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://creditsense:creditsense@db:5432/creditsense}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-${DATABASE_URL:-}}
+      DB_STRICT: ${DB_STRICT:-true}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
-      CORS_ORIGINS: http://localhost:3000
-      ENVIRONMENT: development
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
     depends_on:
       db:
         condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
@@ -46,11 +52,13 @@ services:
       dockerfile: Dockerfile
     command: ["python", "scripts/seed_db.py", "--reset", "--demo-auth"]
     environment:
-      DATABASE_URL: postgresql+psycopg://creditsense:creditsense@db:5432/creditsense
-      DB_STRICT: "true"
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://creditsense:creditsense@db:5432/creditsense}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-${DATABASE_URL:-}}
+      DB_STRICT: ${DB_STRICT:-true}
     depends_on:
       backend:
         condition: service_healthy
+        required: false
     restart: "no"
 
   frontend:

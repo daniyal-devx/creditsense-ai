@@ -1,10 +1,8 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.config import settings
-from backend.core.database import Base, engine, get_db_dialect
+from backend.core.database import get_db_dialect
 from backend.routers import (
     customers,
     applications,
@@ -19,20 +17,10 @@ from backend.routers import (
 )
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    import backend.models  # noqa: F401
-    import backend.models.user  # noqa: F401
-
-    Base.metadata.create_all(bind=engine)
-    yield
-
-
 app = FastAPI(
     title="CreditSense AI",
     description="Explainable financial-risk intelligence platform",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 app.add_middleware(

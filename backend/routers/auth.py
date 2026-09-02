@@ -2,11 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from backend.core.auth import verify_password, create_access_token, hash_password
+from backend.core.auth import (
+    verify_password,
+    create_access_token,
+    get_current_user,
+)
 from backend.models.user import User
 from backend.schemas import LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+@router.get("/me")
+def me(user=Depends(get_current_user)):
+    return {"id": user.id, "email": user.email, "role": user.role}
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -30,5 +39,3 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
         access_token=token,
         user={"id": user.id, "email": user.email, "role": user.role},
     )
-
-

@@ -1,13 +1,20 @@
-"""Seed the database with an admin user and seven demo persona customers."""
+"""Seed the database with demo users and seven demo persona customers.
+
+Uses Supabase Auth (service role) to create auth users when configured,
+with local-only fallback for development.
+"""
 import argparse
 import os
 import sys
+from typing import Optional
+
+import httpx
+from sqlalchemy.orm import Session
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy.orm import Session
-
 from backend.core.auth import hash_password
+from backend.core.config import settings
 from backend.core.database import Base, SessionLocal, engine
 from backend.models import Customer, FinancialProfile
 from backend.models.user import User
@@ -205,8 +212,67 @@ DEMO_CUSTOMERS = [
 ]
 
 
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+class _SupabaseAdmin:
+    """Minimal wrapper that calls Supabase Auth admin endpoints via httpx.
+
+    Avoids the supabase Python SDK's create_client(), which (as of 2.10.0)
+    rejects the newer sb_secret_ service-role key format at initialization
+    even though the underlying admin endpoints accept it.
+    """
+
+    def __init__(self, url: str, service_role_key: str):
+        self.url = url.rstrip("/")
+        self.key = service_role_key
+        self._http = httpx.Client(
+            base_url=f"{self.url}/auth/v1",
+            headers={
+                "apikey": self.key,
+                "Authorization": f"Bearer {self.key}",
+                "Content-Type": "application/json",
+            },
+            timeout=15.0,
+        )
+
+    def create_user(self, email: str, password: str, role: str) -> Optional[str]:
+        r = self._http.post(
+            "/admin/users",
+            json={
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": {"role": role},
+                "app_metadata": {"role": role},
+            },
+        )
+        if r.status_code == 422 and "already registered" in r.text.lower():
+            print(f"  Supabase user {email} already exists")
+            return None
+        r.raise_for_status()
+        return r.json()["id"]
+
+    def close(self):
+        self._http.close()
+
+
+def _supabase_available():
+    return bool(settings.supabase_url and settings.supabase_service_role_key)
+
+
+def _probe_supabase(admin: _SupabaseAdmin) -> bool:
+    try:
+        r = admin._http.get("/health")
+        return r.status_code < 500
+    except Exception:
+        return False
+
+
+def _ensure_local_user(db: Session, email: str, password: str, role: str):
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        user.hashed_password = hash_password(password)
+        user.role = role
+    else:
+        db.add(User(email=email, hashed_password=hash_password(password), role=role))
 
 
 def reset_database():
@@ -215,48 +281,30 @@ def reset_database():
     print("Database schema reset")
 
 
-def seed_admin(db: Session):
-    existing = db.query(User).filter(User.email == "admin@creditsense.ai").first()
-    if existing:
-        print("Admin user already exists")
-        return existing
-
-    password = os.environ.get("ADMIN_PASSWORD")
-    if not password:
-        print("ADMIN_PASSWORD not set; skipping admin seed")
-        return None
-    if len(password) < 8:
-        print("ADMIN_PASSWORD must be at least 8 characters; skipping admin seed")
-        return None
-
-    admin = User(
-        email="admin@creditsense.ai",
-        hashed_password=hash_password(password),
-        role="admin",
-    )
-    db.add(admin)
-    db.commit()
-    db.refresh(admin)
-    print(f"Admin user created: {admin.email}")
-    return admin
-
-
 def seed_demo_auth(db: Session):
-    for email, password, role in DEMO_AUTH_USERS:
-        user = db.query(User).filter(User.email == email).first()
-        if user:
-            user.hashed_password = hash_password(password)
-            user.role = role
+    admin: Optional[_SupabaseAdmin] = None
+    if _supabase_available():
+        candidate = _SupabaseAdmin(settings.supabase_url, settings.supabase_service_role_key)
+        if _probe_supabase(candidate):
+            admin = candidate
+            print("Using Supabase Auth (service role) to create demo users")
         else:
-            db.add(
-                User(
-                    email=email,
-                    hashed_password=hash_password(password),
-                    role=role,
-                )
-            )
+            print("Supabase Auth unreachable; falling back to local-only seeding")
+            candidate.close()
+
+    for email, password, role in DEMO_AUTH_USERS:
+        if admin:
+            try:
+                admin.create_user(email, password, role)
+            except Exception as e:
+                print(f"  Warning: could not create Supabase user {email}: {e}")
+        _ensure_local_user(db, email, password, role)
+
     db.commit()
-    print(f"Seeded {len(DEMO_AUTH_USERS)} local demo accounts")
+    if admin:
+        admin.close()
+    label = "Supabase + local" if admin else "local-only"
+    print(f"Seeded {len(DEMO_AUTH_USERS)} demo accounts ({label})")
 
 
 def seed_customers(db: Session):
@@ -313,21 +361,21 @@ def main():
     parser.add_argument(
         "--demo-auth",
         action="store_true",
-        help="Seed the local-only quick-fill demo accounts.",
+        help="Seed demo accounts (Supabase Auth + local).",
     )
     args = parser.parse_args()
 
     if args.reset:
         reset_database()
     else:
-        create_tables()
+        Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
         if args.demo_auth:
             seed_demo_auth(db)
         else:
-            seed_admin(db)
+            seed_demo_auth(db)
         seed_customers(db)
     finally:
         db.close()

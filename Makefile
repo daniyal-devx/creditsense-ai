@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: test demo frontend-build ci seed seed-reset seed-demo up
+.PHONY: test demo frontend-build ci seed seed-reset seed-demo up migrate make-migration
 
 test:
 	$(PYTHON) -m pytest
@@ -24,3 +24,9 @@ seed-demo:
 
 up:
 	docker compose up --build
+
+migrate:
+	$(PYTHON) -m alembic upgrade head
+
+make-migration:
+	$(PYTHON) -m alembic revision --autogenerate -m "$(msg)"

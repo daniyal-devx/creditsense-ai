@@ -1,11 +1,18 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface AuthContextValue {
-  user: User | null;
+  user: SupabaseUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,10 +27,26 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+function getLegacyUser(): SupabaseUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("user");
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      id: String(parsed.id),
+      email: parsed.email,
+      app_metadata: { role: parsed.role },
+    } as unknown as SupabaseUser;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     let mounted = true;
@@ -33,7 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { user: initialUser },
         } = await supabase.auth.getUser();
-        if (mounted) setUser(initialUser);
+        if (mounted) {
+          setUser(initialUser ?? getLegacyUser());
+        }
+      } catch {
+        if (mounted) {
+          setUser(getLegacyUser());
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -43,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        if (mounted) setUser(session?.user ?? null);
+        if (mounted) setUser(session?.user ?? getLegacyUser());
       }
     );
 
@@ -54,7 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   async function signOut() {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Supabase may not be configured; ignore.
+    }
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
