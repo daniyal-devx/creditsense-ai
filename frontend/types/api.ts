@@ -156,6 +156,7 @@ export interface CopilotResponse {
   decision_source: string;
   disclaimer: string;
   mode: string;
+  error?: string | null;
 }
 
 export interface DashboardMetrics {

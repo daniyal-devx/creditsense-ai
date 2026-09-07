@@ -14,17 +14,13 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-        <AlertCircle className="w-6 h-6 text-red-400" />
+      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
+        <AlertCircle className="size-6 text-destructive" />
       </div>
-      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-slate-400 text-sm max-w-sm mb-4">{message}</p>
+      <h3 className="mb-1 text-lg font-semibold text-foreground">{title}</h3>
+      <p className="mb-4 max-w-sm text-sm text-muted-foreground">{message}</p>
       {retry && (
-        <Button
-          onClick={retry}
-          variant="outline"
-          className="border-navy-600 text-slate-300 hover:bg-navy-800 hover:text-white"
-        >
+        <Button onClick={retry} variant="outline">
           Try again
         </Button>
       )}

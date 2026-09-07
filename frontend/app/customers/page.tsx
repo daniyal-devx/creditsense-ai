@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Search, Plus, ArrowRight } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { ArrowRight, Plus, Search, Users } from "lucide-react";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<CustomerResponse[]>([]);
@@ -35,7 +36,9 @@ export default function CustomersPage() {
   useEffect(() => {
     getCustomers()
       .then(setCustomers)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load customers"))
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load customers")
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -50,96 +53,104 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Customers</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Browse and assess applicant profiles
-          </p>
-        </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+      <PageHeader
+        title="Customers"
+        description="Browse and assess applicant profiles"
+      >
+        <Button asChild>
           <Link href="/applications/new">
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="mr-2 size-4" />
             New Application
           </Link>
         </Button>
-      </div>
+      </PageHeader>
 
       {error && (
-        <Alert
-          variant="destructive"
-          className="bg-red-500/10 border-red-500/30 text-red-300"
-        >
+        <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Card className="bg-navy-900 border-navy-700">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-white">Directory</CardTitle>
-          <CardDescription className="text-slate-400">
-            {filtered.length} customer{filtered.length === 1 ? "" : "s"}
+          <CardTitle>Directory</CardTitle>
+          <CardDescription>
+            {loading
+              ? "Loading customers…"
+              : `${filtered.length} customer${filtered.length === 1 ? "" : "s"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name or employment type..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="pl-9 bg-navy-800 border-navy-600 text-white placeholder:text-slate-500"
+              className="pl-9"
             />
           </div>
 
           {loading ? (
             <div className="space-y-2">
-              <Skeleton className="h-10 bg-navy-800" />
-              <Skeleton className="h-10 bg-navy-800" />
-              <Skeleton className="h-10 bg-navy-800" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-slate-400 text-sm py-8 text-center">
-              No customers match your search.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                <Users className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {query ? "No customers match your search" : "No customers yet"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {query
+                  ? "Try a different name or employment type."
+                  : "Customer profiles appear here as applications come in."}
+              </p>
+              {!query && (
+                <Button asChild variant="outline" className="mt-4">
+                  <Link href="/applications/new">
+                    <Plus className="mr-2 size-4" />
+                    Create your first application
+                  </Link>
+                </Button>
+              )}
+            </div>
           ) : (
-            <div className="rounded-md border border-navy-700 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-border">
               <Table>
-                <TableHeader className="bg-navy-800/50">
-                  <TableRow className="border-navy-700 hover:bg-transparent">
-                    <TableHead className="text-slate-300">Name</TableHead>
-                    <TableHead className="text-slate-300">Employment</TableHead>
-                    <TableHead className="text-slate-300">Income</TableHead>
-                    <TableHead className="text-slate-300">Expenses</TableHead>
-                    <TableHead className="text-right text-slate-300">Action</TableHead>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Employment</TableHead>
+                    <TableHead>Income</TableHead>
+                    <TableHead>Expenses</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((c) => (
-                    <TableRow
-                      key={c.id}
-                      className="border-navy-700 hover:bg-navy-800/50"
-                    >
-                      <TableCell className="font-medium text-white">
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium text-foreground">
                         {c.name}
                       </TableCell>
-                      <TableCell className="text-slate-300 capitalize">
+                      <TableCell className="text-muted-foreground capitalize">
                         {c.employment_type.replace(/_/g, " ")}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-muted-foreground tabular-nums">
                         {formatPKR(c.monthly_income)}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-muted-foreground tabular-nums">
                         {formatPKR(c.monthly_expenses)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link
-                            href={`/customers/${c.id}`}
-                            className="text-blue-400 hover:text-blue-300"
-                          >
+                          <Link href={`/customers/${c.id}`}>
                             View
-                            <ArrowRight className="w-4 h-4 ml-1" />
+                            <ArrowRight className="ml-1 size-4" />
                           </Link>
                         </Button>
                       </TableCell>

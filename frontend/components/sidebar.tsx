@@ -1,89 +1,157 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   LayoutDashboard,
   Users,
   FileText,
   Bot,
-  ShieldAlert,
   BarChart3,
-  ClipboardList,
   LogOut,
+  Menu,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/applications", label: "Applications", icon: FileText },
-  { href: "/fraud", label: "Fraud Queue", icon: ShieldAlert },
   { href: "/model", label: "Model Metrics", icon: BarChart3 },
   { href: "/copilot", label: "AI Copilot", icon: Bot },
-  { href: "/admin/audit", label: "Audit Log", icon: ClipboardList },
+  // Fraud Queue and Audit Log are Wave 2 features; hidden for the MVP demo.
+  // { href: "/fraud", label: "Fraud Queue", icon: ShieldAlert },
+  // { href: "/admin/audit", label: "Audit Log", icon: ClipboardList },
 ];
+
+function NavLinks({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string | null;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const active =
+          pathname === item.href || (pathname?.startsWith(item.href + "/") ?? false);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+              active
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function SidebarFooter() {
+  const { user, signOut } = useAuth();
+  const role = (user?.app_metadata?.role as string) || "LOAN_OFFICER";
+  const roleLabel = role
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return (
+    <div className="border-t border-sidebar-border p-4">
+      {user && (
+        <div className="mb-3 px-3">
+          <p className="truncate text-sm font-medium text-foreground">{user.email}</p>
+          <p className="text-xs text-muted-foreground">{roleLabel}</p>
+        </div>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={signOut}
+        className="w-full justify-start text-muted-foreground"
+      >
+        <LogOut className="size-4" />
+        Sign out
+      </Button>
+      <p className="mt-3 px-3 text-xs text-muted-foreground/70">v1.0.0</p>
+    </div>
+  );
+}
+
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <span className={cn("font-heading font-semibold tracking-tight text-sidebar-foreground", className)}>
+      CreditSense <span className="text-primary">AI</span>
+    </span>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (pathname === "/login") return null;
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-navy-900 border-r border-navy-700 flex flex-col z-50">
-      <div className="p-6 border-b border-navy-700">
-        <Link href="/dashboard" className="block">
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            CreditSense <span className="text-blue-400">AI</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Risk Intelligence Platform</p>
-        </Link>
-      </div>
-
-      <nav className="flex-1 p-4 space-y-1 overflow-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active =
-            pathname === item.href || pathname?.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
-                active
-                  ? "bg-blue-600/20 text-blue-300 font-medium"
-                  : "text-slate-400 hover:bg-navy-800 hover:text-slate-200"
-              )}
-            >
-              <Icon className="w-5 h-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-navy-700 space-y-3">
-        {user && (
-          <div className="px-3">
-            <p className="text-sm font-medium text-white truncate">{user.email}</p>
-            <p className="text-xs text-slate-500">
-              {(user.app_metadata?.role as string) || "LOAN_OFFICER"}
+    <>
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+        <div className="border-b border-sidebar-border p-6">
+          <Link
+            href="/dashboard"
+            className="rounded-lg focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <BrandMark className="text-lg" />
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Risk Intelligence Platform
             </p>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={signOut}
-          className="w-full justify-start text-slate-400 hover:text-white hover:bg-navy-800"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign out
-        </Button>
-        <div className="text-xs text-slate-600 px-3">v1.0.0 — Hackathon MVP</div>
-      </div>
-    </aside>
+          </Link>
+        </div>
+        <NavLinks pathname={pathname} />
+        <SidebarFooter />
+      </aside>
+
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 lg:hidden">
+        <Sheet open={mobileOpen} onOpenChange={(open) => setMobileOpen(open)}>
+          <SheetTrigger
+            render={<Button variant="ghost" size="icon" aria-label="Open navigation" />}
+          >
+            <Menu className="size-5" />
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72 gap-0 p-0">
+            <SheetHeader className="border-b border-sidebar-border">
+              <SheetTitle>
+                <BrandMark className="text-base font-medium" />
+              </SheetTitle>
+            </SheetHeader>
+            <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <SidebarFooter />
+          </SheetContent>
+        </Sheet>
+        <Link href="/dashboard">
+          <BrandMark className="text-base" />
+        </Link>
+      </header>
+    </>
   );
 }

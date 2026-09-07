@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -46,6 +47,7 @@ function getLegacyUser(): SupabaseUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.cookie = "legacy_session=; path=/; max-age=0; samesite=lax";
     }
     setUser(null);
+    router.push("/login");
   }
 
   return (

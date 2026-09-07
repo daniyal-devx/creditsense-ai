@@ -16,8 +16,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageHeader } from "@/components/shared/page-header";
 import { DataSourceBadge } from "@/components/shared/data-source-badge";
-import { Bot, Send, User, Shield } from "lucide-react";
+import { Bot, Send, Shield, User } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,6 +27,7 @@ interface Message {
   sources?: string[];
   groundedFields?: string[];
   mode?: string;
+  error?: string | null;
 }
 
 export default function CopilotPage() {
@@ -68,6 +71,7 @@ export default function CopilotPage() {
           sources: response.sources_referenced,
           groundedFields: response.grounded_fields,
           mode: response.mode,
+          error: response.error,
         },
       ]);
     } catch (e) {
@@ -92,53 +96,59 @@ export default function CopilotPage() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3rem)]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Bot className="w-6 h-6 text-blue-400" />
-            AI Risk Copilot
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">Ask questions about a customer&apos;s risk profile</p>
-        </div>
+    <div className="flex h-[calc(100vh-3rem)] flex-col gap-4">
+      <PageHeader
+        title="AI Risk Copilot"
+        description="Ask questions about a customer's risk profile"
+      >
         <div className="w-full sm:w-64">
-          <Select value={customerId} onValueChange={(v) => setCustomerId(v ?? "")} disabled={customersLoading}>
-            <SelectTrigger className="bg-navy-800 border-navy-600 text-white">
+          <Select
+            value={customerId}
+            onValueChange={(v) => setCustomerId(v ?? "")}
+            disabled={customersLoading}
+          >
+            <SelectTrigger>
               <SelectValue placeholder="Select customer" />
             </SelectTrigger>
-            <SelectContent className="bg-navy-800 border-navy-600">
+            <SelectContent>
               {customers.map((c) => (
-                <SelectItem
-                  key={c.id}
-                  value={String(c.id)}
-                  className="text-white focus:bg-navy-700 focus:text-white"
-                >
+                <SelectItem key={c.id} value={String(c.id)}>
                   {c.name} (#{c.id})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </PageHeader>
 
-      <AlertBanner />
+      <Alert className="border-border/60">
+        <Shield className="size-4 text-muted-foreground" />
+        <AlertDescription className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Non-decision assistant.</span>{" "}
+          The copilot explains risk but cannot approve, decline, or set loan terms.
+          Always verify against the formal assessment.
+        </AlertDescription>
+      </Alert>
 
-      <Card className="flex-1 overflow-hidden bg-navy-900 border-navy-700 flex flex-col">
-        <CardContent className="flex-1 p-0 flex flex-col">
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.length === 0 && (
-                <div className="text-center text-slate-500 mt-20">
-                  <Bot className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-                  <p className="text-lg mb-4">Ask about a customer&apos;s risk profile</p>
-                  <div className="flex flex-wrap gap-2 justify-center">
+                <div className="mt-16 text-center">
+                  <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted">
+                    <Bot className="size-6 text-muted-foreground" />
+                  </div>
+                  <p className="mb-4 text-sm font-medium text-foreground">
+                    Ask about a customer's risk profile
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
                     {suggestions.map((q) => (
                       <Button
                         key={q}
                         variant="outline"
                         size="sm"
                         onClick={() => setInput(q)}
-                        className="border-navy-600 text-slate-300 hover:bg-navy-800 hover:text-white"
                       >
                         {q}
                       </Button>
@@ -148,39 +158,53 @@ export default function CopilotPage() {
               )}
 
               {messages.map((msg, i) => (
-                <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                <div
+                  key={i}
+                  className={cn(
+                    "flex",
+                    msg.role === "user" ? "justify-end" : "justify-start"
+                  )}
+                >
                   <div
                     className={cn(
                       "max-w-[85%] rounded-xl px-4 py-3",
                       msg.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-navy-800 border border-navy-600 text-slate-200"
+                        ? "bg-foreground text-background"
+                        : "border border-border bg-muted/40 text-foreground"
                     )}
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="mb-1 flex items-center gap-2">
                       {msg.role === "user" ? (
-                        <User className="w-3 h-3" />
+                        <User className="size-3" />
                       ) : (
-                        <Bot className="w-3 h-3" />
+                        <Bot className="size-3" />
                       )}
                       <span className="text-[10px] uppercase tracking-wider opacity-70">
                         {msg.role === "user" ? "You" : "Copilot"}
                       </span>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                     {msg.role === "assistant" && msg.mode && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         <DataSourceBadge mode={msg.mode} />
                         {msg.groundedFields && msg.groundedFields.length > 0 && (
-                          <Badge variant="outline" className="border-navy-600 text-slate-400 text-[10px]">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] text-muted-foreground"
+                          >
                             Grounded on: {msg.groundedFields.join(", ")}
                           </Badge>
                         )}
                       </div>
                     )}
+                    {msg.role === "assistant" && msg.error && (
+                      <div className="mt-2 rounded border border-warning/30 bg-warning/10 px-2 py-1 text-[10px] text-warning">
+                        LLM offline: {msg.error}
+                      </div>
+                    )}
                     {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-navy-600">
-                        <p className="text-xs text-slate-400">
+                      <div className="mt-2 border-t border-border/60 pt-2">
+                        <p className="text-xs text-muted-foreground">
                           Sources: {msg.sources.join(", ")}
                         </p>
                       </div>
@@ -191,11 +215,20 @@ export default function CopilotPage() {
 
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-navy-800 border border-navy-600 rounded-xl px-4 py-3">
+                  <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div
+                        className="size-2 animate-bounce rounded-full bg-muted-foreground"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <div
+                        className="size-2 animate-bounce rounded-full bg-muted-foreground"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <div
+                        className="size-2 animate-bounce rounded-full bg-muted-foreground"
+                        style={{ animationDelay: "300ms" }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -204,39 +237,25 @@ export default function CopilotPage() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t border-navy-700 flex gap-2">
+          <div className="flex gap-2 border-t border-border p-4">
             <Input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask about this customer's risk profile..."
-              className="flex-1 bg-navy-800 border-navy-600 text-white placeholder-slate-500 focus-visible:ring-blue-500"
+              className="flex-1"
             />
             <Button
               onClick={handleSend}
               disabled={loading || !input.trim() || !customerId}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <Send className="w-4 h-4 mr-2" />
+              <Send className="mr-2 size-4" />
               Send
             </Button>
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function AlertBanner() {
-  return (
-    <div className="mb-4 p-3 rounded-lg border border-amber-500/20 bg-amber-500/10 flex items-start gap-3">
-      <Shield className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
-      <div className="text-sm text-amber-200">
-        <span className="font-semibold">Non-decision assistant.</span> The copilot explains risk
-        but cannot approve, decline, or set loan terms. Always verify against the formal
-        assessment.
-      </div>
     </div>
   );
 }

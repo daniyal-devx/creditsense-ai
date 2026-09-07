@@ -26,7 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,14 @@ import { ScoreGauge } from "@/components/shared/score-gauge";
 import { RiskBadge } from "@/components/shared/risk-badge";
 import { DecisionChip } from "@/components/shared/decision-chip";
 import { ErrorState } from "@/components/shared/error-state";
-import { ArrowLeft, RefreshCw, AlertTriangle, TrendingDown, Activity } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  RefreshCw,
+  TrendingDown,
+} from "lucide-react";
 
 export default function CustomerPage() {
   const params = useParams();
@@ -98,7 +105,9 @@ export default function CustomerPage() {
         ]);
         setExplanation(exp);
         setTimeline(health);
-      } catch {}
+      } catch {
+        // Non-fatal — explanation/timeline may not yet be generated.
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Assessment failed");
     } finally {
@@ -109,8 +118,8 @@ export default function CustomerPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-48 bg-navy-800" />
-        <Skeleton className="h-64 bg-navy-800" />
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
@@ -127,67 +136,68 @@ export default function CustomerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="text-slate-400 hover:text-white hover:bg-navy-800"
-          >
-            <Link href="/customers">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">{customer.name}</h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {customer.employment_type.replace(/_/g, " ")} — {formatPKR(customer.monthly_income)}/mo
-            </p>
-          </div>
-        </div>
+      <div>
         <Button
-          onClick={handleAssess}
-          disabled={assessing}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          asChild
+          variant="ghost"
+          size="sm"
+          className="-ml-2 mb-2 text-muted-foreground"
         >
-          <RefreshCw className={cn("w-4 h-4 mr-2", assessing && "animate-spin")} />
-          {assessing ? "Assessing..." : assessment ? "Re-run Assessment" : "Run Risk Assessment"}
+          <Link href="/customers">
+            <ArrowLeft className="mr-2 size-4" />
+            Back to customers
+          </Link>
         </Button>
+        <PageHeader
+          title={customer.name}
+          description={`${customer.employment_type.replace(/_/g, " ")} — ${formatPKR(customer.monthly_income)}/mo`}
+        >
+          <Button onClick={handleAssess} disabled={assessing}>
+            <RefreshCw
+              className={cn("mr-2 size-4", assessing && "animate-spin")}
+            />
+            {assessing
+              ? "Assessing…"
+              : assessment
+                ? "Re-run Assessment"
+                : "Run Risk Assessment"}
+          </Button>
+        </PageHeader>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-navy-900 border border-navy-700">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="risk">Risk & Affordability</TabsTrigger>
+          <TabsTrigger value="risk">Risk &amp; Affordability</TabsTrigger>
           <TabsTrigger value="timeline">Financial Health</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {assessment && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="bg-navy-900 border-navy-700 lg:col-span-1">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-1">
                 <CardHeader>
-                  <CardTitle className="text-white">CreditSense Score</CardTitle>
+                  <CardTitle>CreditSense Score</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
                   <ScoreGauge score={assessment.credit_score} size="lg" />
-                  <div className="flex gap-3 mt-6">
+                  <div className="mt-6 flex gap-3">
                     <RiskBadge level={assessment.risk_level} />
                     <DecisionChip decision={assessment.decision} />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-navy-900 border-navy-700 lg:col-span-2">
+              <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-white">Assessment Summary</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    ID #{assessment.id} · {new Date(assessment.created_at).toLocaleString()}
+                  <CardTitle>Assessment Summary</CardTitle>
+                  <CardDescription>
+                    ID #{assessment.id} ·{" "}
+                    {new Date(assessment.created_at).toLocaleString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <SummaryItem
                       label="Repayment Probability"
                       value={
@@ -216,13 +226,14 @@ export default function CustomerPage() {
                   </div>
 
                   {assessment.fraud_flag && (
-                    <Alert className="bg-red-500/10 border-red-500/30 text-red-300">
-                      <AlertTriangle className="w-5 h-5 text-red-400" />
+                    <Alert variant="destructive">
+                      <AlertTriangle className="size-5" />
+                      <AlertTitle>Fraud indicators elevated</AlertTitle>
                       <AlertDescription>
-                        Fraud indicators are elevated. Decision: {assessment.decision}.{" "}
+                        Decision: {assessment.decision}.{" "}
                         <Link
                           href={`/customers/${id}/fraud-network`}
-                          className="underline hover:text-red-200"
+                          className="underline hover:text-foreground"
                         >
                           View fraud network →
                         </Link>
@@ -235,27 +246,53 @@ export default function CustomerPage() {
           )}
 
           {profile ? (
-            <Card className="bg-navy-900 border-navy-700">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white">Financial Profile</CardTitle>
+                <CardTitle>Financial Profile</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <ProfileItem label="Monthly Income" value={formatPKR(customer.monthly_income)} />
-                  <ProfileItem label="Monthly Expenses" value={formatPKR(customer.monthly_expenses)} />
-                  <ProfileItem label="Existing Debt" value={formatPKR(profile.existing_debt)} />
-                  <ProfileItem label="Account Age" value={`${profile.account_age_months} months`} />
-                  <ProfileItem label="Transaction Count" value={profile.transaction_count} />
-                  <ProfileItem label="Avg Transaction" value={formatPKR(profile.avg_transaction)} />
-                  <ProfileItem label="Digital Payment Ratio" value={formatPercent(profile.digital_payment_ratio, 0)} />
-                  <ProfileItem label="Income Stability" value={formatPercent(profile.income_stability, 0)} />
+                <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+                  <ProfileItem
+                    label="Monthly Income"
+                    value={formatPKR(customer.monthly_income)}
+                  />
+                  <ProfileItem
+                    label="Monthly Expenses"
+                    value={formatPKR(customer.monthly_expenses)}
+                  />
+                  <ProfileItem
+                    label="Existing Debt"
+                    value={formatPKR(profile.existing_debt)}
+                  />
+                  <ProfileItem
+                    label="Account Age"
+                    value={`${profile.account_age_months} months`}
+                  />
+                  <ProfileItem
+                    label="Transaction Count"
+                    value={profile.transaction_count}
+                  />
+                  <ProfileItem
+                    label="Avg Transaction"
+                    value={formatPKR(profile.avg_transaction)}
+                  />
+                  <ProfileItem
+                    label="Digital Payment Ratio"
+                    value={formatPercent(profile.digital_payment_ratio, 0)}
+                  />
+                  <ProfileItem
+                    label="Income Stability"
+                    value={formatPercent(profile.income_stability, 0)}
+                  />
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-navy-900 border-navy-700">
+            <Card>
               <CardContent className="py-12 text-center">
-                <p className="text-slate-400">No financial profile on record.</p>
+                <p className="text-sm text-muted-foreground">
+                  No financial profile on record.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -264,11 +301,11 @@ export default function CustomerPage() {
         <TabsContent value="risk" className="space-y-6">
           {assessment ? (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-navy-900 border-navy-700">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-white">Explainability</CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardTitle>Explainability</CardTitle>
+                    <CardDescription>
                       Factors driving the risk assessment
                     </CardDescription>
                   </CardHeader>
@@ -277,16 +314,18 @@ export default function CustomerPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-navy-900 border-navy-700">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-white">Decision</CardTitle>
+                    <CardTitle>Decision</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="flex items-center gap-4">
-                      <span className="text-slate-400 text-sm">Outcome</span>
+                      <span className="text-sm text-muted-foreground">
+                        Outcome
+                      </span>
                       <DecisionChip decision={assessment.decision} />
                     </div>
-                    <Separator className="bg-navy-700" />
+                    <Separator />
                     <div className="space-y-3">
                       <RecommendationRow
                         label="Recommended amount"
@@ -306,35 +345,41 @@ export default function CustomerPage() {
               </div>
 
               {assessment.fraud_flag && (
-                <Card className="bg-red-500/5 border-red-500/20">
+                <Card className="border-destructive/30">
                   <CardHeader>
-                    <CardTitle className="text-red-400 flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5" />
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="size-5" />
                       Fraud Risk Detected
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-slate-300">
-                      This application triggered fraud alerts. Review the network graph before making
-                      a final decision.
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      This application triggered fraud alerts. Review the network
+                      graph before making a final decision.
                     </p>
-                    <Button asChild variant="outline" className="mt-4 border-red-500/30 text-red-300 hover:bg-red-500/10">
-                      <Link href={`/customers/${id}/fraud-network`}>View Fraud Network</Link>
+                    <Button asChild variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10">
+                      <Link href={`/customers/${id}/fraud-network`}>
+                        View Fraud Network
+                      </Link>
                     </Button>
                   </CardContent>
                 </Card>
               )}
             </>
           ) : (
-            <Card className="bg-navy-900 border-navy-700">
-              <CardContent className="py-12 text-center">
-                <p className="text-slate-400 mb-4">No risk assessment has been run yet.</p>
-                <Button
-                  onClick={handleAssess}
-                  disabled={assessing}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {assessing ? "Assessing..." : "Run Risk Assessment"}
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                  <Activity className="size-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  No risk assessment yet
+                </p>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Run an assessment to see explainability, decision, and fraud signals.
+                </p>
+                <Button onClick={handleAssess} disabled={assessing}>
+                  {assessing ? "Assessing…" : "Run Risk Assessment"}
                 </Button>
               </CardContent>
             </Card>
@@ -343,14 +388,14 @@ export default function CustomerPage() {
 
         <TabsContent value="timeline" className="space-y-6">
           {timeline?.timeline && timeline.timeline.length > 0 ? (
-            <Card className="bg-navy-900 border-navy-700">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="size-5" />
                   Financial Health Timeline
                 </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Seeded synthetic timeline for demonstration
+                <CardDescription>
+                  Month-by-month credit trajectory with distress flags
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -358,25 +403,25 @@ export default function CustomerPage() {
                   <div
                     key={point.month}
                     className={cn(
-                      "flex items-center gap-4 p-3 rounded-lg border",
+                      "flex items-center gap-4 rounded-lg border p-3",
                       point.distress_flag
-                        ? "bg-red-500/10 border-red-500/20"
-                        : "bg-navy-800/50 border-transparent"
+                        ? "border-destructive/30 bg-destructive/10"
+                        : "border-border bg-muted/40"
                     )}
                   >
-                    <div className="text-sm font-medium text-slate-300 w-20">
+                    <div className="w-20 text-sm font-medium text-muted-foreground">
                       Month {point.month}
                     </div>
                     <ScoreGauge score={point.credit_score} size="sm" />
                     <RiskBadge level={point.risk_level} />
                     {point.note && (
-                      <div className="text-xs text-amber-300 flex items-center gap-1">
-                        <TrendingDown className="w-3 h-3" />
+                      <div className="flex items-center gap-1 text-xs text-warning">
+                        <TrendingDown className="size-3" />
                         {point.note}
                       </div>
                     )}
                     {point.distress_flag && (
-                      <Badge variant="destructive" className="text-xs">
+                      <Badge variant="destructive" className="ml-auto text-xs">
                         Distress
                       </Badge>
                     )}
@@ -385,9 +430,17 @@ export default function CustomerPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-navy-900 border-navy-700">
-              <CardContent className="py-12 text-center">
-                <p className="text-slate-400">No timeline data available yet.</p>
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                  <Activity className="size-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  No timeline data available
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Financial health will appear here once it&apos;s generated.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -407,9 +460,16 @@ function SummaryItem({
   highlight?: boolean;
 }) {
   return (
-    <div className="bg-navy-800/50 rounded-lg p-4">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className={cn("text-white font-medium", highlight && "text-red-400")}>{value}</div>
+    <div className="rounded-lg bg-muted/60 p-4">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div
+        className={cn(
+          "text-sm font-medium text-foreground",
+          highlight && "text-destructive"
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -417,17 +477,19 @@ function SummaryItem({
 function ProfileItem({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="text-sm font-medium text-white">{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-sm font-medium text-foreground">{value}</div>
     </div>
   );
 }
 
 function RecommendationRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-navy-700 last:border-0">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span className="text-sm font-medium text-white">{value}</span>
+    <div className="flex items-center justify-between border-b border-border py-2 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground tabular-nums">
+        {value}
+      </span>
     </div>
   );
 }
@@ -436,59 +498,91 @@ function renderFactors(
   assessment: RiskAssessmentResponse,
   explanation: ExplanationResponse | null
 ) {
-  const shapPositive = assessment.top_factors.filter((f) => f.direction === "positive");
-  const shapNegative = assessment.top_factors.filter((f) => f.direction === "negative");
+  const shapPositive = assessment.top_factors.filter(
+    (f) => f.direction === "positive"
+  );
+  const shapNegative = assessment.top_factors.filter(
+    (f) => f.direction === "negative"
+  );
 
   if (shapPositive.length > 0 || shapNegative.length > 0) {
     return (
       <>
-        <FactorGroup title="Positive Factors" factors={shapPositive.map((f) => f.factor)} color="green" />
-        <FactorGroup title="Negative Factors" factors={shapNegative.map((f) => f.factor)} color="red" />
+        <FactorGroup
+          title="Positive Factors"
+          factors={shapPositive.map((f) => f.factor)}
+          tone="success"
+        />
+        <FactorGroup
+          title="Negative Factors"
+          factors={shapNegative.map((f) => f.factor)}
+          tone="destructive"
+        />
       </>
     );
   }
 
-  if (explanation?.positive_factors?.length || explanation?.negative_factors?.length) {
+  if (
+    explanation?.positive_factors?.length ||
+    explanation?.negative_factors?.length
+  ) {
     return (
       <>
-        <FactorGroup title="Positive Factors" factors={explanation.positive_factors} color="green" />
-        <FactorGroup title="Negative Factors" factors={explanation.negative_factors} color="red" />
+        <FactorGroup
+          title="Positive Factors"
+          factors={explanation.positive_factors}
+          tone="success"
+        />
+        <FactorGroup
+          title="Negative Factors"
+          factors={explanation.negative_factors}
+          tone="destructive"
+        />
       </>
     );
   }
 
-  return <p className="text-slate-400 text-sm">No explanation data available.</p>;
+  return (
+    <p className="text-sm text-muted-foreground">
+      No explanation data available.
+    </p>
+  );
 }
 
 function FactorGroup({
   title,
   factors,
-  color,
+  tone,
 }: {
   title: string;
   factors: string[];
-  color: "green" | "red";
+  tone: "success" | "destructive";
 }) {
   if (factors.length === 0) return null;
-  const colorClass =
-    color === "green"
-      ? "bg-green-500/10 border-green-500/30 text-green-300"
-      : "bg-red-500/10 border-red-500/30 text-red-300";
+  const chipClass =
+    tone === "success"
+      ? "border-success/30 bg-success/10 text-success"
+      : "border-destructive/30 bg-destructive/10 text-destructive";
+  const headingClass =
+    tone === "success" ? "text-success" : "text-destructive";
 
   return (
     <div>
       <h3
         className={cn(
-          "text-xs uppercase tracking-wider mb-2",
-          color === "green" ? "text-green-400" : "text-red-400"
+          "mb-2 text-xs uppercase tracking-wider",
+          headingClass
         )}
       >
         {title}
       </h3>
       <div className="flex flex-wrap gap-2">
         {factors.map((factor, i) => (
-          <span key={i} className={cn("px-2 py-1 rounded border text-xs", colorClass)}>
-            {color === "green" ? "+" : "−"} {factor}
+          <span
+            key={i}
+            className={cn("rounded border px-2 py-1 text-xs", chipClass)}
+          >
+            {tone === "success" ? "+" : "−"} {factor}
           </span>
         ))}
       </div>

@@ -8,40 +8,40 @@ export function cn(...inputs: ClassValue[]) {
 export function riskColor(level?: string | null): string {
   switch (level?.toUpperCase()) {
     case "LOW":
-      return "text-green-400";
+      return "text-success";
     case "MEDIUM":
-      return "text-amber-400";
+      return "text-warning";
     case "HIGH":
-      return "text-red-400";
+      return "text-destructive";
     default:
-      return "text-slate-400";
+      return "text-muted-foreground";
   }
 }
 
 export function riskBg(level?: string | null): string {
   switch (level?.toUpperCase()) {
     case "LOW":
-      return "bg-green-500/10 border-green-500/30";
+      return "bg-success/10 border-success/30";
     case "MEDIUM":
-      return "bg-amber-500/10 border-amber-500/30";
+      return "bg-warning/10 border-warning/30";
     case "HIGH":
-      return "bg-red-500/10 border-red-500/30";
+      return "bg-destructive/10 border-destructive/30";
     default:
-      return "bg-navy-800 border-navy-700";
+      return "bg-muted border-border";
   }
 }
 
 export function decisionColor(decision?: string | null): string {
   switch (decision?.toUpperCase()) {
     case "APPROVE":
-      return "bg-green-500/15 text-green-400 border-green-500/30";
+      return "bg-success/15 text-success border-success/30";
     case "REVIEW":
     case "MANUAL_REVIEW":
-      return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+      return "bg-warning/15 text-warning border-warning/30";
     case "DECLINE":
-      return "bg-red-500/15 text-red-400 border-red-500/30";
+      return "bg-destructive/15 text-destructive border-destructive/30";
     default:
-      return "bg-navy-800 text-slate-400 border-navy-700";
+      return "bg-muted text-muted-foreground border-border";
   }
 }
 

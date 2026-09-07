@@ -20,12 +20,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body className="flex min-h-screen bg-navy-950 text-slate-200">
+    <html lang="en" className={cn("dark font-sans", geist.variable)}>
+      <body className="flex min-h-screen">
         <AuthProvider>
           <TooltipProvider delay={100}>
             <Sidebar />
-            <main className="flex-1 overflow-auto p-6 ml-64">
+            <main className="flex-1 overflow-auto p-6 pt-20 lg:ml-64 lg:pt-6">
               {children}
             </main>
             <Toaster position="top-right" richColors />

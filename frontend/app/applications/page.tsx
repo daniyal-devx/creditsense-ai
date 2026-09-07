@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getApplications } from "@/lib/api";
 import type { ApplicationResponse } from "@/types/api";
-import { formatPKR } from "@/lib/utils";
+import { cn, formatPKR } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,17 +24,40 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { ArrowRight, FileText, Plus } from "lucide-react";
 
-function statusVariant(status: string) {
-  switch (status.toUpperCase()) {
+function statusTone(status?: string | null): {
+  className: string;
+  label: string;
+} {
+  switch (status?.toUpperCase()) {
     case "APPROVED":
-      return "default";
+      return {
+        className:
+          "border-success/30 bg-success/10 text-success",
+        label: "Approved",
+      };
     case "REJECTED":
-      return "destructive";
+    case "DECLINED":
+      return {
+        className:
+          "border-destructive/30 bg-destructive/10 text-destructive",
+        label: "Declined",
+      };
+    case "REVIEW":
+    case "MANUAL_REVIEW":
+      return {
+        className:
+          "border-warning/30 bg-warning/10 text-warning",
+        label: "Review",
+      };
     case "PENDING":
     default:
-      return "secondary";
+      return {
+        className: "border-border bg-muted text-muted-foreground",
+        label: "Pending",
+      };
   }
 }
 
@@ -54,81 +77,109 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Applications</h1>
-          <p className="text-slate-400 text-sm mt-1">Loan applications and assessments</p>
-        </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+      <PageHeader
+        title="Applications"
+        description="Loan applications and risk assessments"
+      >
+        <Button asChild>
           <Link href="/applications/new">
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="mr-2 size-4" />
             New Application
           </Link>
         </Button>
-      </div>
+      </PageHeader>
 
       {error && (
-        <Alert
-          variant="destructive"
-          className="bg-red-500/10 border-red-500/30 text-red-300"
-        >
+        <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Card className="bg-navy-900 border-navy-700">
-        <CardHeader>
-          <CardTitle className="text-white">All Applications</CardTitle>
-          <CardDescription className="text-slate-400">
-            {applications.length} application{applications.length === 1 ? "" : "s"}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>All Applications</CardTitle>
+          <CardDescription>
+            {loading
+              ? "Loading applications…"
+              : `${applications.length} application${applications.length === 1 ? "" : "s"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="space-y-2">
-              <Skeleton className="h-10 bg-navy-800" />
-              <Skeleton className="h-10 bg-navy-800" />
-              <Skeleton className="h-10 bg-navy-800" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
             </div>
           ) : applications.length === 0 ? (
-            <p className="text-slate-400 text-sm py-8 text-center">
-              No applications yet.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                <FileText className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                No applications yet
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Start a new application to generate a risk assessment.
+              </p>
+              <Button asChild variant="outline" className="mt-4">
+                <Link href="/applications/new">
+                  <Plus className="mr-2 size-4" />
+                  Create your first application
+                </Link>
+              </Button>
+            </div>
           ) : (
-            <div className="rounded-md border border-navy-700 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-border">
               <Table>
-                <TableHeader className="bg-navy-800/50">
-                  <TableRow className="border-navy-700 hover:bg-transparent">
-                    <TableHead className="text-slate-300">ID</TableHead>
-                    <TableHead className="text-slate-300">Customer ID</TableHead>
-                    <TableHead className="text-slate-300">Amount</TableHead>
-                    <TableHead className="text-slate-300">Tenure</TableHead>
-                    <TableHead className="text-slate-300">Status</TableHead>
-                    <TableHead className="text-right text-slate-300">Created</TableHead>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Tenure</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications.map((app) => (
-                    <TableRow
-                      key={app.id}
-                      className="border-navy-700 hover:bg-navy-800/50"
-                    >
-                      <TableCell className="font-medium text-white">#{app.id}</TableCell>
-                      <TableCell className="text-slate-300">#{app.customer_id}</TableCell>
-                      <TableCell className="text-slate-300">
-                        {formatPKR(app.requested_amount)}
-                      </TableCell>
-                      <TableCell className="text-slate-300">
-                        {app.requested_tenure_months} months
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-slate-400 text-sm">
-                        {new Date(app.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {applications.map((app) => {
+                    const tone = statusTone(app.status);
+                    return (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium tabular-nums text-foreground">
+                          #{app.id}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground tabular-nums">
+                          #{app.customer_id}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground tabular-nums">
+                          {formatPKR(app.requested_amount)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground tabular-nums">
+                          {app.requested_tenure_months} mo
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+                              tone.className
+                            )}
+                          >
+                            {tone.label}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/customers/${app.customer_id}`}>
+                              View
+                              <ArrowRight className="ml-1 size-4" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

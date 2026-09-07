@@ -6,6 +6,7 @@ import { getDashboardMetrics, getCustomers } from "@/lib/api";
 import type { DashboardMetrics, CustomerResponse } from "@/types/api";
 import { cn, riskBg, riskColor, formatPKR } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   Card,
   CardContent,
@@ -15,7 +16,16 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowRight, Users, FileText, AlertTriangle, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  FileText,
+  Percent,
+  ShieldAlert,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -41,23 +51,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Executive Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-1">Portfolio risk overview</p>
-        </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+      <PageHeader title="Executive Dashboard" description="Portfolio risk overview">
+        <Button asChild>
           <Link href="/applications/new">New Application</Link>
         </Button>
-      </div>
+      </PageHeader>
 
       {error && (
-        <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 text-red-300">
+        <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Total Customers"
           value={metrics?.total_customers}
@@ -80,125 +86,140 @@ export default function DashboardPage() {
           label="Approval Rate"
           value={metrics?.approval_rate}
           suffix="%"
-          icon={TrendingUp}
+          icon={Percent}
           loading={loading}
         />
         <MetricCard
           label="High Risk"
           value={metrics?.high_risk_count}
           icon={AlertTriangle}
-          highlight={metrics?.high_risk_count ? metrics.high_risk_count > 0 : false}
+          tone={metrics?.high_risk_count ? "danger" : "default"}
           loading={loading}
         />
         <MetricCard
           label="Fraud Alerts"
           value={metrics?.fraud_alerts_count}
-          icon={AlertTriangle}
-          highlight={metrics?.fraud_alerts_count ? metrics.fraud_alerts_count > 0 : false}
+          icon={ShieldAlert}
+          tone={metrics?.fraud_alerts_count ? "danger" : "default"}
           loading={loading}
         />
         <MetricCard
           label="Early Warnings"
           value={metrics?.early_warnings}
-          icon={AlertTriangle}
+          icon={Bell}
+          tone={metrics?.early_warnings ? "warning" : "default"}
           loading={loading}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="bg-navy-900 border-navy-700 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-white">Portfolio Risk Distribution</CardTitle>
-            <CardDescription className="text-slate-400">
-              Breakdown by risk band
-            </CardDescription>
+            <CardTitle>Portfolio Risk Distribution</CardTitle>
+            <CardDescription>Breakdown by risk band</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-24 bg-navy-800" />
+              <Skeleton className="h-24" />
             ) : metrics?.portfolio_risk_distribution ? (
               <div className="flex flex-wrap gap-3">
-                {Object.entries(metrics.portfolio_risk_distribution).map(([level, count]) => (
-                  <div
-                    key={level}
-                    className={cn(
-                      "flex flex-col items-center justify-center px-5 py-4 rounded-xl border min-w-[100px]",
-                      riskBg(level)
-                    )}
-                  >
-                    <span className={cn("text-2xl font-bold", riskColor(level))}>
-                      {count}
-                    </span>
-                    <span className="text-xs text-slate-400 capitalize">{level}</span>
-                  </div>
-                ))}
+                {Object.entries(metrics.portfolio_risk_distribution).map(
+                  ([level, count]) => (
+                    <div
+                      key={level}
+                      className={cn(
+                        "flex min-w-[100px] flex-col items-center justify-center rounded-lg border px-5 py-4",
+                        riskBg(level)
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "text-2xl font-semibold tabular-nums",
+                          riskColor(level)
+                        )}
+                      >
+                        {count}
+                      </span>
+                      <span className="mt-0.5 text-xs text-muted-foreground capitalize">
+                        {level}
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
             ) : (
-              <p className="text-slate-400 text-sm">No distribution data available.</p>
+              <p className="text-sm text-muted-foreground">
+                No distribution data available.
+              </p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-navy-900 border-navy-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">Quick Actions</CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild variant="outline" className="w-full justify-between border-navy-600 text-slate-300 hover:bg-navy-800 hover:text-white">
+            <Button asChild variant="outline" className="w-full justify-between">
               <Link href="/customers">
                 Browse customers
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full justify-between border-navy-600 text-slate-300 hover:bg-navy-800 hover:text-white">
+            <Button asChild variant="outline" className="w-full justify-between">
               <Link href="/applications">
                 View applications
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full justify-between border-navy-600 text-slate-300 hover:bg-navy-800 hover:text-white">
+            <Button asChild variant="outline" className="w-full justify-between">
               <Link href="/copilot">
                 Open AI Copilot
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight />
               </Link>
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-navy-900 border-navy-700">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white">Recent Customers</CardTitle>
-          <CardDescription className="text-slate-400">
-            Latest customer profiles
-          </CardDescription>
+          <CardTitle>Recent Customers</CardTitle>
+          <CardDescription>Latest customer profiles</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="space-y-2">
-              <Skeleton className="h-12 bg-navy-800" />
-              <Skeleton className="h-12 bg-navy-800" />
-              <Skeleton className="h-12 bg-navy-800" />
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
             </div>
           ) : customers.length === 0 ? (
-            <p className="text-slate-400 text-sm py-8 text-center">
-              No customers yet. Seed the database to see data here.
-            </p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted">
+                <Users className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No customers yet</p>
+              <p className="text-sm text-muted-foreground">
+                Customer profiles appear here as applications come in.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {customers.slice(0, 10).map((c) => (
                 <Link
                   key={c.id}
                   href={`/customers/${c.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg bg-navy-800/50 hover:bg-navy-800 transition-colors"
+                  className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                  <div>
-                    <div className="text-sm font-medium text-white">{c.name}</div>
-                    <div className="text-xs text-slate-400">
-                      {c.employment_type.replace(/_/g, " ")} — {formatPKR(c.monthly_income)}/mo
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground">{c.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c.employment_type.replace(/_/g, " ")} —{" "}
+                      {formatPKR(c.monthly_income)}/mo
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-500" />
+                  <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
                 </Link>
               ))}
             </div>
@@ -214,43 +235,47 @@ function MetricCard({
   value,
   suffix,
   icon: Icon,
-  highlight,
+  tone = "default",
   loading,
 }: {
   label: string;
   value?: number | null;
   suffix?: string;
   icon: React.ElementType;
-  highlight?: boolean;
+  tone?: "default" | "danger" | "warning";
   loading: boolean;
 }) {
   return (
-    <Card className={cn("bg-navy-900", highlight ? "border-red-500/30" : "border-navy-700")}>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
-            {loading ? (
-              <Skeleton className="h-8 w-20 mt-2 bg-navy-800" />
-            ) : (
-              <p
-                className={cn(
-                  "text-2xl font-bold mt-1",
-                  highlight ? "text-red-400" : "text-white"
-                )}
-              >
-                {value === undefined || value === null ? "—" : `${value}${suffix ?? ""}`}
-              </p>
-            )}
-          </div>
-          <div
-            className={cn(
-              "p-2 rounded-lg",
-              highlight ? "bg-red-500/10" : "bg-navy-800"
-            )}
-          >
-            <Icon className={cn("w-5 h-5", highlight ? "text-red-400" : "text-slate-400")} />
-          </div>
+    <Card>
+      <CardContent className="flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-8 w-20" />
+          ) : (
+            <p
+              className={cn(
+                "mt-1 font-heading text-2xl font-semibold tracking-tight tabular-nums",
+                tone === "danger" && "text-destructive",
+                tone === "warning" && "text-warning",
+                tone === "default" && "text-foreground"
+              )}
+            >
+              {value === undefined || value === null ? "—" : `${value}${suffix ?? ""}`}
+            </p>
+          )}
+        </div>
+        <div
+          className={cn(
+            "rounded-lg p-2",
+            tone === "danger"
+              ? "bg-destructive/10 text-destructive"
+              : tone === "warning"
+                ? "bg-warning/10 text-warning"
+                : "bg-muted text-muted-foreground"
+          )}
+        >
+          <Icon className="size-5" />
         </div>
       </CardContent>
     </Card>
