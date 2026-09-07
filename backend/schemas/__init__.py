@@ -166,6 +166,7 @@ class CopilotResponse(BaseModel):
         "It does not constitute lending advice and cannot approve or decline applications."
     )
     mode: str = "template"  # "llm" | "template" | "offline_template"
+    error: Optional[str] = None
 
 
 class DashboardMetrics(BaseModel):

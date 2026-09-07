@@ -26,17 +26,13 @@ def generate_copilot_answer(
 ) -> Dict:
     """Call Groq and return a normalized response dict.
 
-    Returns `mode: "llm"` on success and `mode: "offline_template"` when the
-    key is missing or the call fails.
+    Raises RuntimeError when GROQ_API_KEY is missing or the call fails so
+    callers can decide whether to fall back instead of silently masking
+    configuration problems.
     """
-    api_key = os.environ.get("GROQ_API_KEY", "")
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key:
-        return {
-            "answer": _offline_template(user_prompt),
-            "mode": "offline_template",
-            "model": GROQ_MODEL,
-            "error": "GROQ_API_KEY not configured",
-        }
+        raise RuntimeError("GROQ_API_KEY is not configured")
 
     try:
         client = _client()
@@ -55,12 +51,7 @@ def generate_copilot_answer(
             "model": response.model or GROQ_MODEL,
         }
     except Exception as exc:
-        return {
-            "answer": _offline_template(user_prompt),
-            "mode": "offline_template",
-            "model": GROQ_MODEL,
-            "error": str(exc),
-        }
+        raise RuntimeError(f"Groq request failed: {exc}") from exc
 
 
 def _offline_template(user_prompt: str) -> str:

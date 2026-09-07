@@ -215,16 +215,18 @@ def generate_copilot_response(customer_id: int, question: str, db: Session) -> C
 
     system_prompt = _build_prompt(context, question)
     user_prompt = question
-    llm_result = generate_copilot_answer(system_prompt=system_prompt, user_prompt=user_prompt)
 
-    if llm_result.get("mode") == "offline_template":
-        answer = _rule_based_answer(context, question)
-        mode = "offline_template"
-        decision_source = "llm_offline"
-    else:
+    llm_error: str | None = None
+    try:
+        llm_result = generate_copilot_answer(system_prompt=system_prompt, user_prompt=user_prompt)
         answer = _guard_answer(llm_result["answer"], context)
         mode = "llm"
         decision_source = "system" if answer != llm_result["answer"] else "llm"
+    except RuntimeError as exc:
+        answer = _rule_based_answer(context, question)
+        mode = "offline_template"
+        decision_source = "llm_offline"
+        llm_error = str(exc)
 
     response = CopilotResponse(
         customer_id=customer_id,
@@ -234,6 +236,7 @@ def generate_copilot_response(customer_id: int, question: str, db: Session) -> C
         grounded_fields=sorted(context.keys()),
         decision_source=decision_source,
         mode=mode,
+        error=llm_error,
     )
     _persist_conversation(customer_id, question, response, db)
     return response

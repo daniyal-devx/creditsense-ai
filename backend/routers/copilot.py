@@ -17,14 +17,4 @@ def copilot_query(payload: CopilotQuery, db: Session = Depends(get_db), user=Dep
 
     from backend.services.copilot_service import generate_copilot_response
 
-    try:
-        result = generate_copilot_response(payload.customer_id, payload.question, db)
-    except Exception:
-        return CopilotResponse(
-            customer_id=payload.customer_id,
-            question=payload.question,
-            answer="The AI assistant is currently unavailable. Please try again later.",
-            sources_referenced=[],
-        )
-
-    return result
+    return generate_copilot_response(payload.customer_id, payload.question, db)
